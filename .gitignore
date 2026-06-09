@@ -1,3 +1,27 @@
+# Root gitignore for gigflow-root
+
+# Node modules and package caches
+gigflow/node_modules/
+gigflow/.npm-cache/
+gigflow_api/node_modules/
+gigflow_api/.npm-cache/
+
+# Build artifacts
+gigflow/.next/
+gigflow_api/dist/
+
+# Local env files
+gigflow/.env.local
+gigflow/.env*
+gigflow_api/.env*
+
+# Nested git repo directories
+gigflow/.git/
+
+# OS files
+.DS_Store
+Thumbs.db
+
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
@@ -21,7 +45,6 @@
 /build
 
 # misc
-.DS_Store
 *.pem
 
 # debug
