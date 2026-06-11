@@ -7,12 +7,14 @@ import { UserModel } from "../models/user.model";
 
 const createSafeUser = (user: {
   _id: unknown;
-  fullName: string;
+  firstName: string;
+  lastName: string;
   email: string;
   role: string;
 }) => ({
   id: String(user._id),
-  fullName: user.fullName,
+  firstName: user.firstName,
+  lastName: user.lastName,
   email: user.email,
   role: user.role,
 });
@@ -40,7 +42,7 @@ export const loginUser = async (payload: unknown) => {
   const validated = loginUserDto.parse(payload);
 
   const user = await UserModel.findOne({ email: validated.email }).select(
-    "+password"
+    "+password",
   );
 
   if (!user) {
@@ -49,7 +51,7 @@ export const loginUser = async (payload: unknown) => {
 
   const passwordMatches = await bcrypt.compare(
     validated.password,
-    user.password
+    user.password,
   );
 
   if (!passwordMatches) {
@@ -67,7 +69,7 @@ export const loginUser = async (payload: unknown) => {
       role: user.role,
     },
     process.env.JWT_SECRET || "gigflow_dev_secret",
-    tokenOptions
+    tokenOptions,
   );
 
   return {

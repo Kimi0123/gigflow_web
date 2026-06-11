@@ -9,7 +9,13 @@ export interface IUserDocument extends IUser, Document {
 
 const userSchema = new Schema<IUserDocument>(
   {
-    fullName: {
+    firstName: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 80,
+    },
+    lastName:{
       type: String,
       required: true,
       trim: true,
@@ -37,7 +43,7 @@ const userSchema = new Schema<IUserDocument>(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 export const UserModel =

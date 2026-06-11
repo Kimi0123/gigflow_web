@@ -7,11 +7,16 @@ const passwordSchema = z
   .regex(/[0-9]/, "Password must include at least one number");
 
 export const registerUserDto = z.object({
-  fullName: z
+  firstName: z
     .string()
     .trim()
-    .min(2, "Full name must be at least 2 characters")
-    .max(80, "Full name must be 80 characters or fewer"),
+    .min(2, "First name must be at least 2 characters")
+    .max(80, "First name must be 80 characters or fewer"),
+  lastName: z
+    .string()
+    .trim()
+    .min(2, "Last name must be at least 2 characters")
+    .max(80, "Last name must be 80 characters or fewer"),
   email: z
     .string()
     .trim()

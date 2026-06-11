@@ -3,10 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  clearAuthSession,
-  getSavedUser,
-} from "../lib/cookies/authCookies";
+import { clearAuthSession, getSavedUser } from "../lib/cookies/authCookies";
 import type { AuthUser } from "../lib/api/authApi";
 
 export default function DashboardPage() {
@@ -31,7 +28,8 @@ export default function DashboardPage() {
               Dashboard
             </p>
             <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-gray-950">
-              Welcome{user ? `, ${user.fullName}` : " to GigFlow"}
+              Welcome
+              {user ? `, ${user.firstName} ${user.lastName}` : " to GigFlow"}
             </h1>
           </div>
           <button
@@ -71,7 +69,10 @@ export default function DashboardPage() {
         {!user && (
           <p className="mt-8 text-sm text-gray-600">
             Please{" "}
-            <Link className="font-semibold text-sky-600 underline" href="/login">
+            <Link
+              className="font-semibold text-sky-600 underline"
+              href="/login"
+            >
               log in
             </Link>{" "}
             to load your saved session.

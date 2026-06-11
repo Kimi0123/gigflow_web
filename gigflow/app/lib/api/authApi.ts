@@ -1,6 +1,7 @@
 import type { LoginFormValues, RegisterFormValues } from "../validations/auth";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const apiBaseUrl =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 type ApiFieldError = {
   field: string;
@@ -16,7 +17,8 @@ type ApiResponse<T> = {
 
 export type AuthUser = {
   id: string;
-  fullName: string;
+  firstName: string;
+  lastName: string;
   email: string;
   role: "freelancer" | "client";
 };
@@ -37,7 +39,7 @@ export class AuthApiError extends Error {
 
 const request = async <T>(
   path: string,
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
 ): Promise<ApiResponse<T>> => {
   const response = await fetch(`${apiBaseUrl}${path}`, {
     method: "POST",
@@ -64,7 +66,8 @@ const request = async <T>(
 
 export const registerUserApi = async (values: RegisterFormValues) => {
   return request<AuthUser>("/auth/register", {
-    fullName: values.fullName,
+    firstName: values.firstName,
+    lastName: values.lastName,
     email: values.email,
     role: values.role,
     password: values.password,

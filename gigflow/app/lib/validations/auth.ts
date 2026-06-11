@@ -8,10 +8,14 @@ const passwordSchema = z
 
 export const registerSchema = z
   .object({
-    fullName: z
+    firstName: z
       .string()
       .trim()
-      .min(2, "Full name must be at least 2 characters"),
+      .min(2, "First name must be at least 2 characters"),
+    lastName: z
+      .string()
+      .trim()
+      .min(2, "Last name must be at least 2 characters"),
     email: z
       .string()
       .trim()
@@ -24,7 +28,10 @@ export const registerSchema = z
     confirmPassword: z.string().min(1, "Please confirm your password"),
     acceptedTerms: z
       .boolean()
-      .refine((value) => value, "Please accept the terms before creating an account"),
+      .refine(
+        (value) => value,
+        "Please accept the terms before creating an account",
+      ),
   })
   .refine((data) => data.password === data.confirmPassword, {
     path: ["confirmPassword"],
