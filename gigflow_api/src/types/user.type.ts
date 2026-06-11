@@ -1,7 +1,8 @@
 export type UserRole = "freelancer" | "client";
 
 export interface IUser {
-  fullName: string;
+  firstName: string;
+  lastName: string;
   email: string;
   role: UserRole;
   password: string;

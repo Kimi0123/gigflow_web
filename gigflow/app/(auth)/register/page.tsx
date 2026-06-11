@@ -7,7 +7,8 @@ import { registerAction } from "../../actions/authActions";
 import type { RegisterFormValues } from "../../lib/validations/auth";
 
 const initialForm: RegisterFormValues = {
-  fullName: "",
+  firstName: "",
+  lastName: "",
   email: "",
   role: "freelancer",
   password: "",
@@ -26,7 +27,7 @@ export default function RegisterPage() {
 
   const updateForm = <Key extends keyof RegisterFormValues>(
     key: Key,
-    value: RegisterFormValues[Key]
+    value: RegisterFormValues[Key],
   ) => {
     setForm((current) => ({ ...current, [key]: value }));
     setFieldErrors((current) => ({ ...current, [key]: "" }));
@@ -55,7 +56,7 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen items-start justify-center px-4 pt-28">
-      <div className="w-full max-w-[380px]">
+      <div className="w-full max-w-95">
         <div className="mb-8 flex gap-6 border-b border-gray-200">
           <Link
             href="/login"
@@ -79,22 +80,43 @@ export default function RegisterPage() {
         </p>
 
         <form className="space-y-5" onSubmit={handleSubmit} noValidate>
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold tracking-widest text-gray-500">
-              FULL NAME
-            </label>
-            <input
-              type="text"
-              value={form.fullName}
-              onChange={(event) => updateForm("fullName", event.target.value)}
-              placeholder="Your Full Name"
-              className="w-full rounded-md bg-[#EAF5FB] px-4 py-3 text-sm text-gray-700 outline-none transition placeholder:text-gray-400 focus:ring-2 focus:ring-sky-400"
-            />
-            {fieldErrors.fullName && (
-              <p className="mt-1 text-xs font-medium text-red-600">
-                {fieldErrors.fullName}
-              </p>
-            )}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold tracking-widest text-gray-500">
+                FIRST NAME
+              </label>
+              <input
+                type="text"
+                value={form.firstName}
+                onChange={(event) =>
+                  updateForm("firstName", event.target.value)
+                }
+                placeholder="First Name"
+                className="w-full rounded-md bg-[#EAF5FB] px-4 py-3 text-sm text-gray-700 outline-none transition placeholder:text-gray-400 focus:ring-2 focus:ring-sky-400"
+              />
+              {fieldErrors.firstName && (
+                <p className="mt-1 text-xs font-medium text-red-600">
+                  {fieldErrors.firstName}
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold tracking-widest text-gray-500">
+                LAST NAME
+              </label>
+              <input
+                type="text"
+                value={form.lastName}
+                onChange={(event) => updateForm("lastName", event.target.value)}
+                placeholder="Last Name"
+                className="w-full rounded-md bg-[#EAF5FB] px-4 py-3 text-sm text-gray-700 outline-none transition placeholder:text-gray-400 focus:ring-2 focus:ring-sky-400"
+              />
+              {fieldErrors.lastName && (
+                <p className="mt-1 text-xs font-medium text-red-600">
+                  {fieldErrors.lastName}
+                </p>
+              )}
+            </div>
           </div>
 
           <div>
@@ -197,7 +219,9 @@ export default function RegisterPage() {
                 onClick={() => setShowConfirm((value) => !value)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 aria-label={
-                  showConfirm ? "Hide confirmed password" : "Show confirmed password"
+                  showConfirm
+                    ? "Hide confirmed password"
+                    : "Show confirmed password"
                 }
               >
                 <EyeIcon />
