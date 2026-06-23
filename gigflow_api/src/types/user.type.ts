@@ -1,9 +1,11 @@
-export type UserRole = "freelancer" | "client";
+export type UserRole = "freelancer" | "client" | "admin";
 
-export interface IUser {
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: UserRole;
-  password: string;
+export interface IUser{
+  firstName : string,
+  lastName : string,
+  email: string,
+  password: string,
+  role : UserRole,
+  phoneNumber: string;
+  profilePicture?: string;
 }
