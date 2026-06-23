@@ -3,13 +3,20 @@ import {
   AuthApiError,
   loginUserApi,
   registerUserApi,
+  updatePasswordApi,
+  updateProfileApi,
   type LoginResponse,
+  type AuthUser,
 } from "../lib/api/authApi";
 import {
   loginSchema,
   registerSchema,
+  updatePasswordSchema,
+  updateProfileSchema,
   type LoginFormValues,
   type RegisterFormValues,
+  type UpdatePasswordFormValues,
+  type UpdateProfileFormValues,
 } from "../lib/validations/auth";
 
 type ActionResult<T> =
@@ -105,6 +112,91 @@ export const loginAction = async (
     return {
       ok: false,
       message: "Unable to log in. Please try again.",
+      fieldErrors: {},
+    };
+  }
+};
+
+export const updateProfileAction = async (
+  values: UpdateProfileFormValues,
+  profilePicture: File | null,
+  token: string
+): Promise<ActionResult<AuthUser>> => {
+  const parsed = updateProfileSchema.safeParse(values);
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: "Please fix the highlighted fields",
+      fieldErrors: zodFieldErrors(parsed.error),
+    };
+  }
+
+  const formData = new FormData();
+  formData.set("firstName", parsed.data.firstName);
+  formData.set("lastName", parsed.data.lastName);
+  formData.set("phoneNumber", parsed.data.phoneNumber);
+  if (profilePicture) formData.set("profilePicture", profilePicture);
+
+  try {
+    const response = await updateProfileApi(formData, token);
+
+    return {
+      ok: true,
+      message: response.message,
+      data: response.data,
+    };
+  } catch (error) {
+    if (error instanceof AuthApiError) {
+      return {
+        ok: false,
+        message: error.message,
+        fieldErrors: error.fieldErrors,
+      };
+    }
+
+    return {
+      ok: false,
+      message: "Unable to update profile. Please try again.",
+      fieldErrors: {},
+    };
+  }
+};
+
+export const updatePasswordAction = async (
+  values: UpdatePasswordFormValues,
+  token: string
+): Promise<ActionResult<AuthUser>> => {
+  const parsed = updatePasswordSchema.safeParse(values);
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: "Please fix the highlighted fields",
+      fieldErrors: zodFieldErrors(parsed.error),
+    };
+  }
+
+  try {
+    const response = await updatePasswordApi(parsed.data, token);
+
+    return {
+      ok: true,
+      message: response.message,
+      data: response.data,
+    };
+  } catch (error) {
+    if (error instanceof AuthApiError) {
+      return {
+        ok: false,
+        message: error.message,
+        fieldErrors: error.fieldErrors,
+      };
+    }
+
+    return {
+      ok: false,
+      message: "Unable to update password. Please try again.",
       fieldErrors: {},
     };
   }

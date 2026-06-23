@@ -1,7 +1,6 @@
 import type { LoginFormValues, RegisterFormValues } from "../validations/auth";
 
-const apiBaseUrl =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const apiBaseUrl = "/api/proxy";
 
 type ApiFieldError = {
   field: string;
@@ -17,10 +16,14 @@ type ApiResponse<T> = {
 
 export type AuthUser = {
   id: string;
+  _id?: string;
   firstName: string;
   lastName: string;
+  fullName?: string;
   email: string;
-  role: "freelancer" | "client";
+  phoneNumber?: string;
+  role: "freelancer" | "client" | "admin";
+  profilePicture?: string;
 };
 
 export type LoginResponse = {
@@ -39,14 +42,18 @@ export class AuthApiError extends Error {
 
 const request = async <T>(
   path: string,
-  body: Record<string, unknown>,
+  body: Record<string, unknown> | FormData,
+  token?: string,
+  method = "POST"
 ): Promise<ApiResponse<T>> => {
+  const isFormData = body instanceof FormData;
   const response = await fetch(`${apiBaseUrl}${path}`, {
-    method: "POST",
+    method,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify(body),
+    body: isFormData ? body : JSON.stringify(body),
   });
 
   const result = (await response.json()) as ApiResponse<T>;
@@ -64,11 +71,38 @@ const request = async <T>(
   return result;
 };
 
+export const resolveAssetUrl = (url?: string | null) => {
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${apiBaseUrl}${url.startsWith("/") ? url : `/${url}`}`;
+};
+
+const getRequest = async <T>(
+  path: string,
+  token: string
+): Promise<ApiResponse<T>> => {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const result = (await response.json()) as ApiResponse<T>;
+
+  if (!response.ok) {
+    throw new AuthApiError(result.message || "Request failed");
+  }
+
+  return result;
+};
+
 export const registerUserApi = async (values: RegisterFormValues) => {
+  const [firstName, ...rest] = values.fullName.trim().split(/\s+/);
   return request<AuthUser>("/auth/register", {
-    firstName: values.firstName,
-    lastName: values.lastName,
+    firstName,
+    lastName: rest.join(" ") || firstName,
     email: values.email,
+    phoneNumber: "9800000000",
     role: values.role,
     password: values.password,
   });
@@ -79,4 +113,19 @@ export const loginUserApi = async (values: LoginFormValues) => {
     email: values.email,
     password: values.password,
   });
+};
+
+export const getCurrentUserApi = async (token: string) => {
+  return getRequest<AuthUser>("/auth/whoami", token);
+};
+
+export const updateProfileApi = async (formData: FormData, token: string) => {
+  return request<AuthUser>("/auth/update", formData, token, "PATCH");
+};
+
+export const updatePasswordApi = async (
+  values: Record<string, string>,
+  token: string
+) => {
+  return request<AuthUser>("/auth/update/password", values, token, "PATCH");
 };
