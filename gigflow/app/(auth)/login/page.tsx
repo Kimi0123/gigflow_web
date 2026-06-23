@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { loginAction } from "../../actions/authActions";
-import { saveAuthSession } from "../../lib/cookies/authCookies";
+import { useAuth } from "../../providers/AuthContext";
 import type { LoginFormValues } from "../../lib/validations/auth";
 
 const initialForm: LoginFormValues = {
@@ -15,6 +15,7 @@ const initialForm: LoginFormValues = {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { setSession } = useAuth();
   const [form, setForm] = useState<LoginFormValues>(initialForm);
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -44,7 +45,7 @@ export default function LoginPage() {
       return;
     }
 
-    saveAuthSession(result.data.token, result.data.user, form.remember);
+    setSession(result.data.token, result.data.user, form.remember);
     setFieldErrors({});
     setMessage("Login successful. Opening your dashboard...");
     window.setTimeout(() => router.push("/dashboard"), 500);

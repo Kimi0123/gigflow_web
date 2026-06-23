@@ -9,7 +9,13 @@ export interface IUserDocument extends IUser, Document {
 
 const userSchema = new Schema<IUserDocument>(
   {
-    fullName: {
+    firstName: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 80,
+    },
+    lastName: {
       type: String,
       required: true,
       trim: true,
@@ -25,7 +31,7 @@ const userSchema = new Schema<IUserDocument>(
     },
     role: {
       type: String,
-      enum: ["freelancer", "client"],
+      enum: ["freelancer", "client", "admin"],
       required: true,
     },
     password: {
@@ -34,11 +40,23 @@ const userSchema = new Schema<IUserDocument>(
       minlength: 8,
       select: false,
     },
+    phoneNumber: {
+      type: String,
+      required: true,
+      trim: true,
+      unique: true,
+      index: true,
+    },
+      profilePicture:{
+      type: String,
+      required: false,
+    },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 export const UserModel =
-  mongoose.models.User || mongoose.model<IUserDocument>("User", userSchema);
+ (mongoose.models.User as mongoose.Model<IUserDocument>) ||
+  mongoose.model<IUserDocument>("User", userSchema);

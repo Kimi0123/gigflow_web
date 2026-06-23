@@ -40,3 +40,11 @@ export const getSavedUser = (): AuthUser | null => {
     return null;
   }
 };
+
+export const getSavedToken = (): string | null => {
+  const cookie = document.cookie
+    .split("; ")
+    .find((item) => item.startsWith(`${authTokenCookie}=`));
+
+  return cookie ? decodeURIComponent(cookie.split("=")[1]) : null;
+};
