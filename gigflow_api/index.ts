@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
-import app from "./app";
-import { connectDB } from "./database/mongodb";
+import app from "./src/app";
+import { connectDB } from "./src/database/mongodb";
 
 dotenv.config();
 
@@ -9,9 +9,9 @@ const port = Number(process.env.PORT) || 5000;
 const startServer = async () => {
   await connectDB();
 
-  app.listen(port, () => {
-    console.log(`GigFlow API running on http://localhost:${port}`);
-  });
+app.listen(port, "0.0.0.0", () => {
+  console.log(`GigFlow API running on ${port}`);
+});
 };
 
 startServer().catch((error) => {
