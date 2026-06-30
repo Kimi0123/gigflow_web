@@ -102,7 +102,7 @@ export const registerUserApi = async (values: RegisterFormValues) => {
     firstName,
     lastName: rest.join(" ") || firstName,
     email: values.email,
-    phoneNumber: "9800000000",
+    phoneNumber: values.phoneNumber,
     role: values.role,
     password: values.password,
   });
@@ -129,3 +129,4 @@ export const updatePasswordApi = async (
 ) => {
   return request<AuthUser>("/auth/update/password", values, token, "PATCH");
 };
+
