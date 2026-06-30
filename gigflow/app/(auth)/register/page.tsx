@@ -9,6 +9,7 @@ import type { RegisterFormValues } from "../../lib/validations/auth";
 const initialForm: RegisterFormValues = {
   fullName: "",
   email: "",
+  phoneNumber: "",
   role: "freelancer",
   password: "",
   confirmPassword: "",
@@ -26,7 +27,7 @@ export default function RegisterPage() {
 
   const updateForm = <Key extends keyof RegisterFormValues>(
     key: Key,
-    value: RegisterFormValues[Key]
+    value: RegisterFormValues[Key],
   ) => {
     setForm((current) => ({ ...current, [key]: value }));
     setFieldErrors((current) => ({ ...current, [key]: "" }));
@@ -117,6 +118,26 @@ export default function RegisterPage() {
 
           <div>
             <label className="mb-1.5 block text-xs font-semibold tracking-widest text-gray-500">
+              PHONE NUMBER
+            </label>
+            <input
+              type="text"
+              value={form.phoneNumber}
+              onChange={(event) =>
+                updateForm("phoneNumber", event.target.value)
+              }
+              placeholder="+977"
+              className="w-full rounded-md bg-[#EAF5FB] px-4 py-3 text-sm text-gray-700 outline-none transition placeholder:text-gray-400 focus:ring-2 focus:ring-sky-400"
+            />
+            {fieldErrors.phoneNumber && (
+              <p className="mt-1 text-xs font-medium text-red-600">
+                {fieldErrors.phoneNumber}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold tracking-widest text-gray-500">
               I WANT TO
             </label>
             <div className="flex overflow-hidden rounded-md border border-gray-200">
@@ -197,7 +218,9 @@ export default function RegisterPage() {
                 onClick={() => setShowConfirm((value) => !value)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 aria-label={
-                  showConfirm ? "Hide confirmed password" : "Show confirmed password"
+                  showConfirm
+                    ? "Hide confirmed password"
+                    : "Show confirmed password"
                 }
               >
                 <EyeIcon />
