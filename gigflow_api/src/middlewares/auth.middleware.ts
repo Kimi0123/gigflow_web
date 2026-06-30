@@ -71,3 +71,19 @@ export const authenticate = async (
 };
 
 export const authorized = authenticate;
+
+export const requireAdmin = (
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) => {
+  if (req.user?.role !== "admin") {
+    return next(
+      new HttpError(403, "Admin privileges are required", {
+        code: ErrorCodes.AUTH_FORBIDDEN,
+      }),
+    );
+  }
+
+  next();
+};
