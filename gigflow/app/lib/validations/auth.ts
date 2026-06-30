@@ -17,6 +17,11 @@ export const registerSchema = z
       .trim()
       .toLowerCase()
       .email("Please enter a valid email address"),
+    phoneNumber: z
+      .string()
+      .trim()
+      .min(5, "Phone number must be at least 5 characters")
+      .max(20, "Phone number must be 20 characters or fewer"),
     role: z.enum(["freelancer", "client"], {
       error: "Choose whether you want to find work or hire talent",
     }),
@@ -72,3 +77,5 @@ export type RegisterFormValues = z.infer<typeof registerSchema>;
 export type LoginFormValues = z.infer<typeof loginSchema>;
 export type UpdateProfileFormValues = z.infer<typeof updateProfileSchema>;
 export type UpdatePasswordFormValues = z.infer<typeof updatePasswordSchema>;
+
+
