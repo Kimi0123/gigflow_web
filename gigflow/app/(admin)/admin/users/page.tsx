@@ -13,8 +13,8 @@ import {
   type AdminUserPayload,
   type AdminUserRole,
   type AdminUsersMeta,
-} from "../../lib/api/adminUsersApi";
-import { useAuth } from "../../providers/AuthContext";
+} from "../../../lib/api/adminUsersApi";
+import { useAuth } from "../../../providers/AuthContext";
 
 const limit = 10;
 const blankForm: AdminUserPayload = {
