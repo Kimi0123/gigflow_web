@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { loginAction } from "../../actions/authActions";
 import { useAuth } from "../../providers/AuthContext";
@@ -14,7 +13,6 @@ const initialForm: LoginFormValues = {
 };
 
 export default function LoginPage() {
-  const router = useRouter();
   const { setSession } = useAuth();
   const [form, setForm] = useState<LoginFormValues>(initialForm);
   const [showPassword, setShowPassword] = useState(false);
@@ -48,7 +46,7 @@ export default function LoginPage() {
     setSession(result.data.token, result.data.user, form.remember);
     setFieldErrors({});
     setMessage("Login successful. Opening your dashboard...");
-    window.setTimeout(() => router.push("/dashboard"), 500);
+    window.setTimeout(() => window.location.replace("/dashboard"), 500);
   };
 
   return (

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 export default function AuthLayout({
   children,
@@ -8,17 +9,21 @@ export default function AuthLayout({
   return (
     <div className="min-h-screen bg-white">
       {/* Top-left logo */}
-      <div className="absolute top-6 left-6 flex items-center gap-2">
+      <Link
+        href="/"
+        className="absolute left-6 top-6 z-50 flex items-center gap-2"
+      >
         <Image
           src="/assets/logo.svg"
           alt="GigFlow logo"
           width={48}
           height={48}
+          priority
         />
-        <span className="text-xl font-bold text-gray-900 tracking-tight">
+        <span className="text-xl font-bold">
           GigFlow
         </span>
-      </div>
+      </Link>
 
       {children}
     </div>
