@@ -10,6 +10,7 @@ import {
 import { ErrorCodes } from "../errors/error-codes";
 import { HttpError } from "../errors/http-error";
 import { IUserDocument, UserModel } from "../models/user.model";
+import { getUserRatingSummary } from "./review.service";
 import { AuthUserResponse, toAuthUserResponse } from "../utils/user.mapper";
 
 const SALT_ROUNDS = 10;
@@ -87,9 +88,11 @@ export const loginUser = async (
     });
   }
 
+  const ratingSummary = await getUserRatingSummary(user._id.toString());
+
   return {
     token: signAccessToken(user),
-    user: toAuthUserResponse(user),
+    user: toAuthUserResponse(user, ratingSummary),
   };
 };
 
@@ -104,7 +107,8 @@ export const getCurrentUser = async (
     });
   }
 
-  return toAuthUserResponse(user);
+  const ratingSummary = await getUserRatingSummary(userId);
+  return toAuthUserResponse(user, ratingSummary);
 };
 
 export const updateUserProfile = async (
@@ -144,7 +148,8 @@ export const updateUserProfile = async (
     });
   }
 
-  return toAuthUserResponse(user);
+  const ratingSummary = await getUserRatingSummary(userId);
+  return toAuthUserResponse(user, ratingSummary);
 };
 
 export const updateUserPassword = async (
@@ -175,7 +180,8 @@ export const updateUserPassword = async (
   user.password = await bcrypt.hash(data.newPassword, SALT_ROUNDS);
   await user.save();
 
-  return toAuthUserResponse(user);
+  const ratingSummary = await getUserRatingSummary(userId);
+  return toAuthUserResponse(user, ratingSummary);
 };
 
 export const deleteUserById = async (userId: string): Promise<boolean> => {
@@ -202,8 +208,10 @@ export const refreshAccessToken = async (
     });
   }
 
+  const ratingSummary = await getUserRatingSummary(userId);
+
   return {
     token: signAccessToken(user),
-    user: toAuthUserResponse(user),
+    user: toAuthUserResponse(user, ratingSummary),
   };
 };
