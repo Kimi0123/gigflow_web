@@ -291,10 +291,22 @@ export const updateProposalStatus = async (
     });
   }
 
-  proposal.status = data.status;
-  await proposal.save();
+if (data.status === "accepted" && job.status !== "open") {
+  throw new HttpError(400, "This job already has an active contract", {
+    code: ErrorCodes.BAD_REQUEST,
+  });
+}
 
-  if (data.status === "accepted") {
+if (proposal.status !== "pending") {
+  throw new HttpError(400, "Only pending proposals can be updated", {
+    code: ErrorCodes.BAD_REQUEST,
+  });
+}
+
+proposal.status = data.status;
+await proposal.save();
+
+if (data.status === "accepted") {
     // Auto-create a contract between client and the winning freelancer
     await ContractModel.create({
       job: job._id,
