@@ -13,6 +13,9 @@ import {
   jobApi,
 } from "../../lib/api/jobApi";
 import { type Contract, contractApi } from "../../lib/api/contractApi";
+import { reviewApi } from "../../lib/api/reviewApi";
+import { UserRatingDisplay } from "../ui/UserRatingDisplay";
+import { LeaveReviewModal } from "./LeaveReviewModal";
 import DashboardHeader from "./DashboardHeader";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -195,9 +198,17 @@ export default function ClientDashboard() {
             <h1 className="text-[26px] font-black tracking-tight text-[#111d31]">
               Welcome back, {firstName} 👋
             </h1>
-            <p className="mt-1 text-[14px] text-[#6b7280]">
-              Manage your jobs, review proposals, and hire top freelancers.
-            </p>
+            <div className="flex flex-wrap items-center gap-3 mt-1">
+              <p className="text-[14px] text-[#6b7280]">
+                Manage your jobs, review proposals, and hire top freelancers.
+              </p>
+              <UserRatingDisplay
+                initialSummary={{
+                  averageRating: user?.averageRating,
+                  totalReviews: user?.totalReviews,
+                }}
+              />
+            </div>
           </div>
           <button
             type="button"
@@ -336,6 +347,9 @@ export default function ClientDashboard() {
             contracts={contracts}
             loading={loadingContracts}
             onComplete={handleCompleteContract}
+            token={token}
+            userId={user?.id || user?._id}
+            onToast={showToast}
           />
         )}
       </div>
@@ -501,6 +515,7 @@ function ClientJobCard({
                 <ProposalRow
                   key={p.id}
                   proposal={p}
+                  token={token}
                   onAccept={() => handleAcceptReject(p.id, "accepted")}
                   onReject={() => handleAcceptReject(p.id, "rejected")}
                 />
@@ -516,10 +531,12 @@ function ClientJobCard({
 // ─── Proposal Row (client view) ───────────────────────────────────────────────
 function ProposalRow({
   proposal,
+  token,
   onAccept,
   onReject,
 }: {
   proposal: Proposal;
+  token: string;
   onAccept: () => void;
   onReject: () => void;
 }) {
@@ -543,8 +560,9 @@ function ProposalRow({
             {initials}
           </div>
           <div className="min-w-0">
-            <p className="text-[13px] font-bold text-[#111d31] truncate">
+            <p className="text-[13px] font-bold text-[#111d31] truncate flex items-center gap-2">
               {fl?.name ?? "Anonymous Freelancer"}
+              {fl?.id && <UserRatingDisplay token={token} userId={fl.id} />}
             </p>
             <p className="text-[11px] text-[#70829d]">{fl?.email}</p>
           </div>
@@ -827,11 +845,54 @@ function ContractsTab({
   contracts,
   loading,
   onComplete,
+  token,
+  userId,
+  onToast,
 }: {
   contracts: Contract[];
   loading: boolean;
   onComplete: (id: string) => void;
+  token?: string | null;
+  userId?: string;
+  onToast: (type: "success" | "error", msg: string) => void;
 }) {
+  const [reviewedContractIds, setReviewedContractIds] = useState<string[]>([]);
+  const [reviewingContract, setReviewingContract] = useState<Contract | null>(null);
+
+  useEffect(() => {
+    if (!token || !userId) return;
+    const completed = contracts.filter((c) => c.status === "completed");
+    if (completed.length === 0) return;
+
+    let isMounted = true;
+    Promise.all(
+      completed.map(async (c) => {
+        try {
+          const reviews = await reviewApi.getContractReviews(token, c.id);
+          const myReview = reviews.find((r) => r.reviewerId === userId);
+          return myReview ? c.id : null;
+        } catch {
+          return null;
+        }
+      })
+    ).then((results) => {
+      if (isMounted) {
+        setReviewedContractIds(results.filter((id): id is string => id !== null));
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [token, userId, contracts]);
+
+  const handleReviewSubmit = async (rating: number, comment: string) => {
+    if (!token || !reviewingContract) return;
+    await reviewApi.submitReview(token, reviewingContract.id, { rating, comment });
+    setReviewedContractIds((prev) => [...prev, reviewingContract.id]);
+    onToast("success", "Review submitted successfully!");
+  };
+
   return (
     <div className="rounded-2xl border border-[#e9eef5] bg-white shadow-sm">
       <div className="flex flex-col gap-4 border-b border-[#e9eef5] p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -863,61 +924,87 @@ function ContractsTab({
         </div>
       ) : (
         <div className="divide-y divide-[#f1f5f9]">
-          {contracts.map((contract) => (
-            <div key={contract.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-3">
-                  <h3 className="text-[16px] font-bold text-[#111d31]">{contract.jobTitle}</h3>
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                      contract.status === "completed"
-                        ? "bg-[#dcfce7] text-[#166534]"
-                        : contract.status === "cancelled"
-                        ? "bg-[#fee2e2] text-[#991b1b]"
-                        : "bg-[#e0f7ff] text-[#0369a1]"
-                    }`}
-                  >
-                    {contract.status}
-                  </span>
-                </div>
-                
-                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] font-medium text-[#6b7280]">
-                  <span className="flex items-center gap-1">
-                    <UsersIcon className="h-3.5 w-3.5" />
-                    Freelancer: {contract.freelancerName}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <CurrencyIcon className="h-3.5 w-3.5" />
-                    Agreed: Rs. {contract.agreedAmount.toLocaleString()}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <ClockIcon className="h-3.5 w-3.5" />
-                    Started: {contract.startedAt}
-                  </span>
-                  {contract.completedAt && (
-                    <span className="flex items-center gap-1 text-[#166534]">
-                      <CheckCircleIcon className="h-3.5 w-3.5" />
-                      Completed: {contract.completedAt}
+          {contracts.map((contract) => {
+            const isReviewed = reviewedContractIds.includes(contract.id);
+            return (
+              <div key={contract.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-[16px] font-bold text-[#111d31]">{contract.jobTitle}</h3>
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                        contract.status === "completed"
+                          ? "bg-[#dcfce7] text-[#166534]"
+                          : contract.status === "cancelled"
+                          ? "bg-[#fee2e2] text-[#991b1b]"
+                          : "bg-[#e0f7ff] text-[#0369a1]"
+                      }`}
+                    >
+                      {contract.status}
                     </span>
+                  </div>
+                  
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] font-medium text-[#6b7280]">
+                    <span className="flex items-center gap-1">
+                      <UsersIcon className="h-3.5 w-3.5" />
+                      Freelancer: {contract.freelancerName}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <CurrencyIcon className="h-3.5 w-3.5" />
+                      Agreed: Rs. {contract.agreedAmount.toLocaleString()}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <ClockIcon className="h-3.5 w-3.5" />
+                      Started: {contract.startedAt}
+                    </span>
+                    {contract.completedAt && (
+                      <span className="flex items-center gap-1 text-[#166534]">
+                        <CheckCircleIcon className="h-3.5 w-3.5" />
+                        Completed: {contract.completedAt}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {contract.status === "active" && (
+                    <button
+                      type="button"
+                      onClick={() => onComplete(contract.id)}
+                      className="flex items-center gap-1.5 rounded-lg bg-[#22c55e] px-4 py-2 text-[12px] font-bold text-white shadow-sm transition hover:bg-[#16a34a] hover:shadow-md"
+                    >
+                      <CheckIcon className="h-3.5 w-3.5" />
+                      Mark Complete
+                    </button>
+                  )}
+                  {contract.status === "completed" && (
+                    isReviewed ? (
+                      <span className="rounded-full border border-[#cbd5e1] bg-[#f8fafc] px-3 py-1 text-[11px] font-bold text-[#64748b]">
+                        Reviewed ✓
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setReviewingContract(contract)}
+                        className="flex items-center gap-1.5 rounded-lg bg-[#38bdf8] px-3.5 py-1.5 text-[12px] font-bold text-white shadow-sm transition hover:bg-[#0ea5e9]"
+                      >
+                        Leave a Review
+                      </button>
+                    )
                   )}
                 </div>
               </div>
-
-              {contract.status === "active" && (
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onComplete(contract.id)}
-                    className="flex items-center gap-1.5 rounded-lg bg-[#22c55e] px-4 py-2 text-[12px] font-bold text-white shadow-sm transition hover:bg-[#16a34a] hover:shadow-md"
-                  >
-                    <CheckIcon className="h-3.5 w-3.5" />
-                    Mark Complete
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
+      )}
+
+      {reviewingContract && (
+        <LeaveReviewModal
+          contract={reviewingContract}
+          onClose={() => setReviewingContract(null)}
+          onSubmit={handleReviewSubmit}
+        />
       )}
     </div>
   );

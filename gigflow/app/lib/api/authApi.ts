@@ -24,6 +24,8 @@ export type AuthUser = {
   phoneNumber?: string;
   role: "freelancer" | "client" | "admin";
   profilePicture?: string;
+  averageRating?: number;
+  totalReviews?: number;
 };
 
 export type LoginResponse = {
