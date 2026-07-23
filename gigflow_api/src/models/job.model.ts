@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema } from "mongoose";
 
-export type JobStatus = "open" | "closed" | "draft";
+export type JobStatus = "open" | "closed" | "draft" | "in-progress";
 export type BudgetType = "fixed" | "hourly";
 
 export interface IJob {
@@ -40,7 +40,7 @@ const jobSchema = new Schema<IJobDocument>(
     duration: { type: String, required: true, trim: true },
     status: {
       type: String,
-      enum: ["open", "closed", "draft"],
+      enum: ["open", "closed", "draft", "in-progress"],
       default: "open",
     },
     proposalCount: { type: Number, default: 0 },
