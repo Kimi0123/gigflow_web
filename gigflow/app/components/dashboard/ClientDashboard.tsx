@@ -17,6 +17,7 @@ import { reviewApi } from "../../lib/api/reviewApi";
 import { UserRatingDisplay } from "../ui/UserRatingDisplay";
 import { LeaveReviewModal } from "./LeaveReviewModal";
 import DashboardHeader from "./DashboardHeader";
+import MessagesTab from "./MessagesTab";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const categoryOptions = [
@@ -37,6 +38,7 @@ const navItems = [
   { label: "My Jobs", href: "#" },
   { label: "Proposals", href: "#" },
   { label: "Active Contracts", href: "#" },
+  { label: "Messages", href: "#" },
 ];
 
 interface PostJobForm {
@@ -118,7 +120,7 @@ export default function ClientDashboard() {
   }, [token]);
 
   useEffect(() => {
-    if (activeNav === "Active Contracts") fetchContracts();
+    if (activeNav === "Active Contracts" || activeNav === "Messages") fetchContracts();
   }, [activeNav, fetchContracts]);
 
   const handlePostJob = async (payload: PostJobPayload) => {
@@ -275,7 +277,7 @@ export default function ClientDashboard() {
 
         {/* Jobs section */}
         {/* ── Jobs section (only when on Overview / My Jobs / Proposals tabs) ── */}
-        {activeNav !== "Active Contracts" && (
+        {activeNav !== "Active Contracts" && activeNav !== "Messages" && (
           <div className="rounded-2xl border border-[#e9eef5] bg-white shadow-sm">
             <div className="flex flex-col gap-4 border-b border-[#e9eef5] p-5 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -339,6 +341,15 @@ export default function ClientDashboard() {
               </div>
             )}
           </div>
+        )}
+
+        {/* ── Messages tab ── */}
+        {activeNav === "Messages" && (
+          <MessagesTab
+            role="client"
+            contracts={contracts}
+            onToast={showToast}
+          />
         )}
 
         {/* ── Active Contracts tab ── */}
