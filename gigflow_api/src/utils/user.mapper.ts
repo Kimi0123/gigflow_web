@@ -10,6 +10,10 @@ export type AuthUserResponse = {
   phoneNumber: string;
   role: UserRole;
   profilePicture?: string;
+  bio: string;
+  title: string;
+  skills: string[];
+  cvUrl: string;
   averageRating: number;
   totalReviews: number;
 };
@@ -31,6 +35,10 @@ export const toAuthUserResponse = (
     email: user.email,
     phoneNumber: user.phoneNumber,
     role: user.role,
+    bio: user.bio ?? "",
+    title: user.title ?? "",
+    skills: user.skills ?? [],
+    cvUrl: user.cvUrl ?? "",
     averageRating: ratingSummary.averageRating,
     totalReviews: ratingSummary.totalReviews,
     ...(user.profilePicture ? { profilePicture: user.profilePicture } : {}),
