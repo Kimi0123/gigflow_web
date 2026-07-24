@@ -7,6 +7,7 @@ import {
 } from "../dtos/job.dto";
 import { ErrorCodes } from "../errors/error-codes";
 import { HttpError } from "../errors/http-error";
+import { ContractModel } from "../models/contract.model";
 import { IJobDocument, JobModel } from "../models/job.model";
 import { ProposalModel } from "../models/proposal.model";
 import { UserModel } from "../models/user.model";
@@ -226,18 +227,27 @@ export const submitProposal = async (freelancerId: string, jobId: string, input:
     });
   }
 
-  const existing = await ProposalModel.findOne({ job: jobId, freelancer: freelancerId });
-  if (existing) {
-    throw new HttpError(409, "You have already submitted a proposal for this job", {
-      code: ErrorCodes.CONFLICT,
-    });
-  }
+const existing = await ProposalModel.findOne({ job: jobId, freelancer: freelancerId });
 
-  const proposal = await ProposalModel.create({
+if (existing && existing.status !== "withdrawn") {
+  throw new HttpError(409, "You have already submitted a proposal for this job", {
+    code: ErrorCodes.CONFLICT,
+  });
+}
+
+let proposal;
+if (existing) {
+  // Reactivate the withdrawn proposal instead of creating a duplicate
+  // (a hard unique index on {job, freelancer} would reject a second document anyway)
+  existing.set({ ...data, status: "pending" });
+  proposal = await existing.save();
+} else {
+  proposal = await ProposalModel.create({
     job: jobId,
     freelancer: freelancerId,
     ...data,
   });
+}
 
   // Increment proposal count on the job
   await JobModel.findByIdAndUpdate(jobId, { $inc: { proposalCount: 1 } });
@@ -290,12 +300,39 @@ export const updateProposalStatus = async (
     });
   }
 
-  proposal.status = data.status;
-  await proposal.save();
+if (data.status === "accepted" && job.status !== "open") {
+  throw new HttpError(400, "This job already has an active contract", {
+    code: ErrorCodes.BAD_REQUEST,
+  });
+}
 
-  // If accepted, close the job
-  if (data.status === "accepted") {
-    await JobModel.findByIdAndUpdate(job._id, { status: "closed" });
+if (proposal.status !== "pending") {
+  throw new HttpError(400, "Only pending proposals can be updated", {
+    code: ErrorCodes.BAD_REQUEST,
+  });
+}
+
+proposal.status = data.status;
+await proposal.save();
+
+if (data.status === "accepted") {
+    // Auto-create a contract between client and the winning freelancer
+    await ContractModel.create({
+      job: job._id,
+      client: job.client,
+      freelancer: proposal.freelancer,
+      proposal: proposal._id,
+      agreedAmount: proposal.bidAmount,
+    });
+
+    // Move job to in-progress (not closed — it closes when contract is completed)
+    await JobModel.findByIdAndUpdate(job._id, { status: "in-progress" });
+
+    // Auto-reject all other pending proposals on this job
+    await ProposalModel.updateMany(
+      { job: job._id, _id: { $ne: proposal._id }, status: "pending" },
+      { $set: { status: "rejected" } }
+    );
   }
 
   return serializeProposal(proposal, job.title, null);

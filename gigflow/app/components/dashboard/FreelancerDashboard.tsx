@@ -11,6 +11,10 @@ import {
   jobApi,
   proposalApi,
 } from "../../lib/api/jobApi";
+import { type Contract, contractApi } from "../../lib/api/contractApi";
+import { reviewApi } from "../../lib/api/reviewApi";
+import { UserRatingDisplay } from "../ui/UserRatingDisplay";
+import { LeaveReviewModal } from "./LeaveReviewModal";
 import DashboardHeader from "./DashboardHeader";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -21,6 +25,7 @@ const navItems = [
   { label: "Browse Jobs", href: "#" },
   { label: "My Proposals", href: "#" },
   { label: "Saved Jobs", href: "#" },
+  { label: "My Contracts", href: "#" },
 ];
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -43,6 +48,10 @@ export default function FreelancerDashboard() {
 
   // Stats state
   const [stats, setStats] = useState<FreelancerStats | null>(null);
+
+  // Contracts state
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [loadingContracts, setLoadingContracts] = useState(false);
 
   // Saved / apply state
   const [savedJobs, setSavedJobs] = useState<string[]>([]);
@@ -122,6 +131,24 @@ export default function FreelancerDashboard() {
     if (activeNav === "My Proposals") fetchProposals();
   }, [activeNav, fetchProposals]);
 
+  const fetchContracts = useCallback(async () => {
+    if (!token) return;
+    setLoadingContracts(true);
+    try {
+      const data = await contractApi.getFreelancerContracts(token);
+      setContracts(data);
+    } catch {
+      showToast("error", "Failed to load contracts.");
+    } finally {
+      setLoadingContracts(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  useEffect(() => {
+    if (activeNav === "My Contracts") fetchContracts();
+  }, [activeNav, fetchContracts]);
+
   // ─── Actions ────────────────────────────────────────────────────────────────
   const toggleSave = (id: string) =>
     setSavedJobs((prev) =>
@@ -188,9 +215,17 @@ export default function FreelancerDashboard() {
               <h1 className="text-[26px] font-black tracking-tight text-[#111d31]">
                 Good day, {firstName} 👋
               </h1>
-              <p className="mt-1 text-[14px] text-[#6b7280]">
-                {totalJobs > 0 ? `${totalJobs} open jobs available for you.` : "Loading available jobs..."}
-              </p>
+              <div className="flex flex-wrap items-center gap-3 mt-1">
+                <p className="text-[14px] text-[#6b7280]">
+                  {totalJobs > 0 ? `${totalJobs} open jobs available for you.` : "Loading available jobs..."}
+                </p>
+                <UserRatingDisplay
+                  initialSummary={{
+                    averageRating: user?.averageRating,
+                    totalReviews: user?.totalReviews,
+                  }}
+                />
+              </div>
             </div>
             {/* Profile completion */}
             <div className="flex items-center gap-3 rounded-xl border border-[#dce5ef] bg-white px-4 py-3">
@@ -379,6 +414,17 @@ export default function FreelancerDashboard() {
             appliedJobs={appliedJobIds}
           />
         )}
+
+        {/* My Contracts */}
+        {activeNav === "My Contracts" && (
+          <ContractsTab
+            contracts={contracts}
+            loading={loadingContracts}
+            token={token}
+            userId={user?.id || user?._id}
+            onToast={showToast}
+          />
+        )}
       </div>
 
       {/* Apply Modal */}
@@ -391,6 +437,161 @@ export default function FreelancerDashboard() {
         />
       )}
     </main>
+  );
+}
+
+// ─── Contracts Tab ────────────────────────────────────────────────────────────
+function ContractsTab({
+  contracts,
+  loading,
+  token,
+  userId,
+  onToast,
+}: {
+  contracts: Contract[];
+  loading: boolean;
+  token?: string | null;
+  userId?: string;
+  onToast: (type: "success" | "error", msg: string) => void;
+}) {
+  const [reviewedContractIds, setReviewedContractIds] = useState<string[]>([]);
+  const [reviewingContract, setReviewingContract] = useState<Contract | null>(null);
+
+  useEffect(() => {
+    if (!token || !userId) return;
+    const completed = contracts.filter((c) => c.status === "completed");
+    if (completed.length === 0) return;
+
+    let isMounted = true;
+    Promise.all(
+      completed.map(async (c) => {
+        try {
+          const reviews = await reviewApi.getContractReviews(token, c.id);
+          const myReview = reviews.find((r) => r.reviewerId === userId);
+          return myReview ? c.id : null;
+        } catch {
+          return null;
+        }
+      })
+    ).then((results) => {
+      if (isMounted) {
+        setReviewedContractIds(results.filter((id): id is string => id !== null));
+      }
+    });
+
+    return () => { isMounted = false; };
+  }, [token, userId, contracts]);
+
+  const handleReviewSubmit = async (rating: number, comment: string) => {
+    if (!token || !reviewingContract) return;
+    await reviewApi.submitReview(token, reviewingContract.id, { rating, comment });
+    setReviewedContractIds((prev) => [...prev, reviewingContract.id]);
+    onToast("success", "Review submitted successfully!");
+  };
+
+  return (
+    <div className="rounded-2xl border border-[#e9eef5] bg-white shadow-sm">
+      <div className="flex flex-col gap-4 border-b border-[#e9eef5] p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-[17px] font-extrabold text-[#111d31]">My Contracts</h2>
+          <p className="text-[12px] text-[#70829d]">
+            {contracts.length} contract{contracts.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="space-y-px divide-y divide-[#f1f5f9]">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="p-5">
+              <div className="h-5 w-2/3 animate-pulse rounded bg-[#f1f5f9]" />
+              <div className="mt-2 h-3 w-1/3 animate-pulse rounded bg-[#f1f5f9]" />
+              <div className="mt-4 h-3 w-full animate-pulse rounded bg-[#f1f5f9]" />
+            </div>
+          ))}
+        </div>
+      ) : contracts.length === 0 ? (
+        <div className="py-16 text-center">
+          <p className="text-[15px] font-semibold text-[#94a3b8]">No active contracts</p>
+          <p className="mt-1 text-[13px] text-[#70829d]">
+            When a client accepts your proposal, your contract will appear here.
+          </p>
+        </div>
+      ) : (
+        <div className="divide-y divide-[#f1f5f9]">
+          {contracts.map((contract) => {
+            const isReviewed = reviewedContractIds.includes(contract.id);
+            return (
+              <div key={contract.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-[16px] font-bold text-[#111d31]">{contract.jobTitle}</h3>
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                        contract.status === "completed"
+                          ? "bg-[#dcfce7] text-[#166534]"
+                          : contract.status === "cancelled"
+                          ? "bg-[#fee2e2] text-[#991b1b]"
+                          : "bg-[#e0f7ff] text-[#0369a1]"
+                      }`}
+                    >
+                      {contract.status}
+                    </span>
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] font-medium text-[#6b7280]">
+                    <span className="flex items-center gap-1">
+                      <UsersIcon className="h-3.5 w-3.5" />
+                      Client: {contract.clientName}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <ClockIcon className="h-3.5 w-3.5" />
+                      Agreed: Rs. {contract.agreedAmount.toLocaleString()}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <CheckCircleIcon className="h-3.5 w-3.5" />
+                      Started: {contract.startedAt}
+                    </span>
+                    {contract.completedAt && (
+                      <span className="flex items-center gap-1 text-[#166534]">
+                        <CheckCircleIcon className="h-3.5 w-3.5" />
+                        Completed: {contract.completedAt}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {contract.status === "completed" && (
+                  <div className="flex shrink-0 items-center">
+                    {isReviewed ? (
+                      <span className="rounded-full border border-[#cbd5e1] bg-[#f8fafc] px-3 py-1 text-[11px] font-bold text-[#64748b]">
+                        Reviewed ✓
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setReviewingContract(contract)}
+                        className="flex items-center gap-1.5 rounded-lg bg-[#38bdf8] px-3.5 py-1.5 text-[12px] font-bold text-white shadow-sm transition hover:bg-[#0ea5e9]"
+                      >
+                        Leave a Review
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {reviewingContract && (
+        <LeaveReviewModal
+          contract={reviewingContract}
+          onClose={() => setReviewingContract(null)}
+          onSubmit={handleReviewSubmit}
+        />
+      )}
+    </div>
   );
 }
 

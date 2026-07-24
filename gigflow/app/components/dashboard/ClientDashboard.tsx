@@ -12,6 +12,10 @@ import {
   ApiError,
   jobApi,
 } from "../../lib/api/jobApi";
+import { type Contract, contractApi } from "../../lib/api/contractApi";
+import { reviewApi } from "../../lib/api/reviewApi";
+import { UserRatingDisplay } from "../ui/UserRatingDisplay";
+import { LeaveReviewModal } from "./LeaveReviewModal";
 import DashboardHeader from "./DashboardHeader";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -32,6 +36,7 @@ const navItems = [
   { label: "Overview", href: "#" },
   { label: "My Jobs", href: "#" },
   { label: "Proposals", href: "#" },
+  { label: "Active Contracts", href: "#" },
 ];
 
 interface PostJobForm {
@@ -57,6 +62,8 @@ export default function ClientDashboard() {
   const [loadingStats, setLoadingStats] = useState(true);
   const [showPostModal, setShowPostModal] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [loadingContracts, setLoadingContracts] = useState(false);
 
   const firstName = user?.firstName || "there";
 
@@ -95,6 +102,24 @@ export default function ClientDashboard() {
     fetchJobs();
     fetchStats();
   }, [fetchJobs, fetchStats]);
+
+  const fetchContracts = useCallback(async () => {
+    if (!token) return;
+    setLoadingContracts(true);
+    try {
+      const data = await contractApi.getClientContracts(token);
+      setContracts(data);
+    } catch {
+      showToast("error", "Failed to load contracts.");
+    } finally {
+      setLoadingContracts(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  useEffect(() => {
+    if (activeNav === "Active Contracts") fetchContracts();
+  }, [activeNav, fetchContracts]);
 
   const handlePostJob = async (payload: PostJobPayload) => {
     if (!token) return;
@@ -136,6 +161,17 @@ export default function ClientDashboard() {
     }
   };
 
+  const handleCompleteContract = async (contractId: string) => {
+    if (!token) return;
+    try {
+      const updated = await contractApi.completeContract(token, contractId);
+      setContracts((prev) => prev.map((c) => (c.id === contractId ? updated : c)));
+      showToast("success", "Contract marked complete! The job is now closed.");
+    } catch {
+      showToast("error", "Failed to complete contract.");
+    }
+  };
+
   const filteredJobs =
     statusFilter === "all" ? jobs : jobs.filter((j) => j.status === statusFilter);
 
@@ -162,9 +198,17 @@ export default function ClientDashboard() {
             <h1 className="text-[26px] font-black tracking-tight text-[#111d31]">
               Welcome back, {firstName} 👋
             </h1>
-            <p className="mt-1 text-[14px] text-[#6b7280]">
-              Manage your jobs, review proposals, and hire top freelancers.
-            </p>
+            <div className="flex flex-wrap items-center gap-3 mt-1">
+              <p className="text-[14px] text-[#6b7280]">
+                Manage your jobs, review proposals, and hire top freelancers.
+              </p>
+              <UserRatingDisplay
+                initialSummary={{
+                  averageRating: user?.averageRating,
+                  totalReviews: user?.totalReviews,
+                }}
+              />
+            </div>
           </div>
           <button
             type="button"
@@ -230,69 +274,84 @@ export default function ClientDashboard() {
         </div>
 
         {/* Jobs section */}
-        <div className="rounded-2xl border border-[#e9eef5] bg-white shadow-sm">
-          <div className="flex flex-col gap-4 border-b border-[#e9eef5] p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-[17px] font-extrabold text-[#111d31]">My Jobs</h2>
-              <p className="text-[12px] text-[#70829d]">
-                {filteredJobs.length} job{filteredJobs.length !== 1 ? "s" : ""}
-              </p>
+        {/* ── Jobs section (only when on Overview / My Jobs / Proposals tabs) ── */}
+        {activeNav !== "Active Contracts" && (
+          <div className="rounded-2xl border border-[#e9eef5] bg-white shadow-sm">
+            <div className="flex flex-col gap-4 border-b border-[#e9eef5] p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-[17px] font-extrabold text-[#111d31]">My Jobs</h2>
+                <p className="text-[12px] text-[#70829d]">
+                  {filteredJobs.length} job{filteredJobs.length !== 1 ? "s" : ""}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(["all", "open", "in-progress", "closed", "draft"] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setStatusFilter(s)}
+                    className={`rounded-lg px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] transition ${
+                      statusFilter === s
+                        ? "bg-[#38bdf8] text-white"
+                        : "border border-[#e5e9ef] bg-white text-[#6b7280] hover:border-[#38bdf8] hover:text-[#38bdf8]"
+                    }`}
+                  >
+                    {s === "all" ? "All" : s === "in-progress" ? "In Progress" : s.charAt(0).toUpperCase() + s.slice(1)}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {(["all", "open", "closed", "draft"] as const).map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setStatusFilter(s)}
-                  className={`rounded-lg px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] transition ${
-                    statusFilter === s
-                      ? "bg-[#38bdf8] text-white"
-                      : "border border-[#e5e9ef] bg-white text-[#6b7280] hover:border-[#38bdf8] hover:text-[#38bdf8]"
-                  }`}
-                >
-                  {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
 
-          {loadingJobs ? (
-            <div className="space-y-px divide-y divide-[#f1f5f9]">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="p-5">
-                  <div className="h-5 w-2/3 animate-pulse rounded bg-[#f1f5f9]" />
-                  <div className="mt-2 h-3 w-1/3 animate-pulse rounded bg-[#f1f5f9]" />
-                  <div className="mt-4 h-3 w-full animate-pulse rounded bg-[#f1f5f9]" />
-                </div>
-              ))}
-            </div>
-          ) : filteredJobs.length === 0 ? (
-            <div className="py-16 text-center">
-              <BriefcaseIcon className="mx-auto mb-3 h-10 w-10 text-[#cbd5e1]" />
-              <p className="text-[15px] font-semibold text-[#94a3b8]">No jobs found</p>
-              <button
-                type="button"
-                onClick={() => setShowPostModal(true)}
-                className="mt-4 text-[13px] font-bold text-[#38bdf8] underline"
-              >
-                Post your first job
-              </button>
-            </div>
-          ) : (
-            <div className="divide-y divide-[#f1f5f9]">
-              {filteredJobs.map((job) => (
-                <ClientJobCard
-                  key={job.id}
-                  job={job}
-                  token={token!}
-                  onDelete={() => handleDeleteJob(job.id)}
-                  onStatusChange={(s) => handleStatusChange(job.id, s)}
-                  onToast={showToast}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+            {loadingJobs ? (
+              <div className="space-y-px divide-y divide-[#f1f5f9]">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="p-5">
+                    <div className="h-5 w-2/3 animate-pulse rounded bg-[#f1f5f9]" />
+                    <div className="mt-2 h-3 w-1/3 animate-pulse rounded bg-[#f1f5f9]" />
+                    <div className="mt-4 h-3 w-full animate-pulse rounded bg-[#f1f5f9]" />
+                  </div>
+                ))}
+              </div>
+            ) : filteredJobs.length === 0 ? (
+              <div className="py-16 text-center">
+                <BriefcaseIcon className="mx-auto mb-3 h-10 w-10 text-[#cbd5e1]" />
+                <p className="text-[15px] font-semibold text-[#94a3b8]">No jobs found</p>
+                <button
+                  type="button"
+                  onClick={() => setShowPostModal(true)}
+                  className="mt-4 text-[13px] font-bold text-[#38bdf8] underline"
+                >
+                  Post your first job
+                </button>
+              </div>
+            ) : (
+              <div className="divide-y divide-[#f1f5f9]">
+                {filteredJobs.map((job) => (
+                  <ClientJobCard
+                    key={job.id}
+                    job={job}
+                    token={token!}
+                    onDelete={() => handleDeleteJob(job.id)}
+                    onStatusChange={(s) => handleStatusChange(job.id, s)}
+                    onToast={showToast}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Active Contracts tab ── */}
+        {activeNav === "Active Contracts" && (
+          <ContractsTab
+            contracts={contracts}
+            loading={loadingContracts}
+            onComplete={handleCompleteContract}
+            token={token}
+            userId={user?.id || user?._id}
+            onToast={showToast}
+          />
+        )}
       </div>
 
       {showPostModal && (
@@ -328,6 +387,7 @@ function ClientJobCard({
     open: { label: "Open", color: "#15803d", bg: "#f0fdf4", border: "#bbf7d0" },
     closed: { label: "Closed", color: "#b91c1c", bg: "#fef2f2", border: "#fecaca" },
     draft: { label: "Draft", color: "#92400e", bg: "#fffbeb", border: "#fde68a" },
+    "in-progress": { label: "In Progress", color: "#0369a1", bg: "#e0f7ff", border: "#bae6fd" },
   };
   const s = statusConfig[job.status];
 
@@ -349,7 +409,7 @@ function ClientJobCard({
     try {
       const updated = await jobApi.updateProposalStatus(token, proposalId, action);
       setProposals((prev) => prev.map((p) => (p.id === proposalId ? updated : p)));
-      if (action === "accepted") onStatusChange("closed");
+      if (action === "accepted") onStatusChange("in-progress");
       onToast("success", action === "accepted" ? "Freelancer hired!" : "Proposal rejected.");
     } catch {
       onToast("error", "Failed to update proposal.");
@@ -455,6 +515,7 @@ function ClientJobCard({
                 <ProposalRow
                   key={p.id}
                   proposal={p}
+                  token={token}
                   onAccept={() => handleAcceptReject(p.id, "accepted")}
                   onReject={() => handleAcceptReject(p.id, "rejected")}
                 />
@@ -470,10 +531,12 @@ function ClientJobCard({
 // ─── Proposal Row (client view) ───────────────────────────────────────────────
 function ProposalRow({
   proposal,
+  token,
   onAccept,
   onReject,
 }: {
   proposal: Proposal;
+  token: string;
   onAccept: () => void;
   onReject: () => void;
 }) {
@@ -497,8 +560,9 @@ function ProposalRow({
             {initials}
           </div>
           <div className="min-w-0">
-            <p className="text-[13px] font-bold text-[#111d31] truncate">
+            <p className="text-[13px] font-bold text-[#111d31] truncate flex items-center gap-2">
               {fl?.name ?? "Anonymous Freelancer"}
+              {fl?.id && <UserRatingDisplay token={token} userId={fl.id} />}
             </p>
             <p className="text-[11px] text-[#70829d]">{fl?.email}</p>
           </div>
@@ -773,6 +837,175 @@ function Field({
       </label>
       {children}
       {error && <p className="mt-1 text-[11px] text-[#dc2626]">{error}</p>}
+    </div>
+  );
+}
+// ─── Contracts Tab ────────────────────────────────────────────────────────────
+function ContractsTab({
+  contracts,
+  loading,
+  onComplete,
+  token,
+  userId,
+  onToast,
+}: {
+  contracts: Contract[];
+  loading: boolean;
+  onComplete: (id: string) => void;
+  token?: string | null;
+  userId?: string;
+  onToast: (type: "success" | "error", msg: string) => void;
+}) {
+  const [reviewedContractIds, setReviewedContractIds] = useState<string[]>([]);
+  const [reviewingContract, setReviewingContract] = useState<Contract | null>(null);
+
+  useEffect(() => {
+    if (!token || !userId) return;
+    const completed = contracts.filter((c) => c.status === "completed");
+    if (completed.length === 0) return;
+
+    let isMounted = true;
+    Promise.all(
+      completed.map(async (c) => {
+        try {
+          const reviews = await reviewApi.getContractReviews(token, c.id);
+          const myReview = reviews.find((r) => r.reviewerId === userId);
+          return myReview ? c.id : null;
+        } catch {
+          return null;
+        }
+      })
+    ).then((results) => {
+      if (isMounted) {
+        setReviewedContractIds(results.filter((id): id is string => id !== null));
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [token, userId, contracts]);
+
+  const handleReviewSubmit = async (rating: number, comment: string) => {
+    if (!token || !reviewingContract) return;
+    await reviewApi.submitReview(token, reviewingContract.id, { rating, comment });
+    setReviewedContractIds((prev) => [...prev, reviewingContract.id]);
+    onToast("success", "Review submitted successfully!");
+  };
+
+  return (
+    <div className="rounded-2xl border border-[#e9eef5] bg-white shadow-sm">
+      <div className="flex flex-col gap-4 border-b border-[#e9eef5] p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-[17px] font-extrabold text-[#111d31]">Active Contracts</h2>
+          <p className="text-[12px] text-[#70829d]">
+            {contracts.length} contract{contracts.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="space-y-px divide-y divide-[#f1f5f9]">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="p-5">
+              <div className="h-5 w-2/3 animate-pulse rounded bg-[#f1f5f9]" />
+              <div className="mt-2 h-3 w-1/3 animate-pulse rounded bg-[#f1f5f9]" />
+              <div className="mt-4 h-3 w-full animate-pulse rounded bg-[#f1f5f9]" />
+            </div>
+          ))}
+        </div>
+      ) : contracts.length === 0 ? (
+        <div className="py-16 text-center">
+          <BriefcaseIcon className="mx-auto mb-3 h-10 w-10 text-[#cbd5e1]" />
+          <p className="text-[15px] font-semibold text-[#94a3b8]">No active contracts</p>
+          <p className="mt-1 text-[13px] text-[#70829d]">
+            When you accept a proposal, a contract will appear here.
+          </p>
+        </div>
+      ) : (
+        <div className="divide-y divide-[#f1f5f9]">
+          {contracts.map((contract) => {
+            const isReviewed = reviewedContractIds.includes(contract.id);
+            return (
+              <div key={contract.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-[16px] font-bold text-[#111d31]">{contract.jobTitle}</h3>
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                        contract.status === "completed"
+                          ? "bg-[#dcfce7] text-[#166534]"
+                          : contract.status === "cancelled"
+                          ? "bg-[#fee2e2] text-[#991b1b]"
+                          : "bg-[#e0f7ff] text-[#0369a1]"
+                      }`}
+                    >
+                      {contract.status}
+                    </span>
+                  </div>
+                  
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] font-medium text-[#6b7280]">
+                    <span className="flex items-center gap-1">
+                      <UsersIcon className="h-3.5 w-3.5" />
+                      Freelancer: {contract.freelancerName}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <CurrencyIcon className="h-3.5 w-3.5" />
+                      Agreed: Rs. {contract.agreedAmount.toLocaleString()}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <ClockIcon className="h-3.5 w-3.5" />
+                      Started: {contract.startedAt}
+                    </span>
+                    {contract.completedAt && (
+                      <span className="flex items-center gap-1 text-[#166534]">
+                        <CheckCircleIcon className="h-3.5 w-3.5" />
+                        Completed: {contract.completedAt}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {contract.status === "active" && (
+                    <button
+                      type="button"
+                      onClick={() => onComplete(contract.id)}
+                      className="flex items-center gap-1.5 rounded-lg bg-[#22c55e] px-4 py-2 text-[12px] font-bold text-white shadow-sm transition hover:bg-[#16a34a] hover:shadow-md"
+                    >
+                      <CheckIcon className="h-3.5 w-3.5" />
+                      Mark Complete
+                    </button>
+                  )}
+                  {contract.status === "completed" && (
+                    isReviewed ? (
+                      <span className="rounded-full border border-[#cbd5e1] bg-[#f8fafc] px-3 py-1 text-[11px] font-bold text-[#64748b]">
+                        Reviewed ✓
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setReviewingContract(contract)}
+                        className="flex items-center gap-1.5 rounded-lg bg-[#38bdf8] px-3.5 py-1.5 text-[12px] font-bold text-white shadow-sm transition hover:bg-[#0ea5e9]"
+                      >
+                        Leave a Review
+                      </button>
+                    )
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {reviewingContract && (
+        <LeaveReviewModal
+          contract={reviewingContract}
+          onClose={() => setReviewingContract(null)}
+          onSubmit={handleReviewSubmit}
+        />
+      )}
     </div>
   );
 }

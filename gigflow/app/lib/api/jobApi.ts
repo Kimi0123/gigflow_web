@@ -55,7 +55,7 @@ const del = <T>(path: string, token: string) =>
   request<T>(path, { method: "DELETE" }, token);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-export type JobStatus = "open" | "closed" | "draft";
+export type JobStatus = "open" | "closed" | "draft" | "in-progress";
 export type BudgetType = "fixed" | "hourly";
 export type ProposalStatus = "pending" | "accepted" | "rejected" | "withdrawn";
 
