@@ -16,6 +16,7 @@ import { reviewApi } from "../../lib/api/reviewApi";
 import { UserRatingDisplay } from "../ui/UserRatingDisplay";
 import { LeaveReviewModal } from "./LeaveReviewModal";
 import DashboardHeader from "./DashboardHeader";
+import MessagesTab from "./MessagesTab";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const categoryTabs = ["All", "Development", "Design", "Writing", "Marketing", "AI Services"];
@@ -26,6 +27,7 @@ const navItems = [
   { label: "My Proposals", href: "#" },
   { label: "Saved Jobs", href: "#" },
   { label: "My Contracts", href: "#" },
+  { label: "Messages", href: "#" },
 ];
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -146,7 +148,7 @@ export default function FreelancerDashboard() {
   }, [token]);
 
   useEffect(() => {
-    if (activeNav === "My Contracts") fetchContracts();
+    if (activeNav === "My Contracts" || activeNav === "Messages") fetchContracts();
   }, [activeNav, fetchContracts]);
 
   // ─── Actions ────────────────────────────────────────────────────────────────
@@ -422,6 +424,15 @@ export default function FreelancerDashboard() {
             loading={loadingContracts}
             token={token}
             userId={user?.id || user?._id}
+            onToast={showToast}
+          />
+        )}
+
+        {/* Messages */}
+        {activeNav === "Messages" && (
+          <MessagesTab
+            role="freelancer"
+            contracts={contracts}
             onToast={showToast}
           />
         )}
