@@ -237,9 +237,15 @@ export default function DashboardHeader({
             <button
               key={item.label}
               type="button"
-              onClick={() => onNavClick?.(item.label)}
+              onClick={() => {
+                if (item.href && item.href.startsWith("/")) {
+                  router.push(item.href);
+                } else {
+                  onNavClick?.(item.label);
+                }
+              }}
               className={`flex h-full shrink-0 items-center border-b-2 px-4 text-[11px] font-bold uppercase tracking-[0.22em] transition ${
-                (activeNav ?? item.active)
+                (activeNav ?? item.active) === item.label
                   ? "border-[#38bdf8] text-[#38bdf8]"
                   : "border-transparent text-[#6d7f98] hover:text-[#38bdf8]"
               }`}
