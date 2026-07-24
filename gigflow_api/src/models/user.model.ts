@@ -47,9 +47,24 @@ const userSchema = new Schema<IUserDocument>(
       unique: true,
       index: true,
     },
-      profilePicture:{
+    profilePicture: {
       type: String,
       required: false,
+    },
+    bio: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+    },
+    title: {
+      type: String,
+      trim: true,
+      maxlength: 100,
+    },
+    skills: [{ type: String, trim: true }],
+    cvUrl: {
+      type: String,
+      trim: true,
     },
   },
   {
@@ -58,5 +73,5 @@ const userSchema = new Schema<IUserDocument>(
 );
 
 export const UserModel =
- (mongoose.models.User as mongoose.Model<IUserDocument>) ||
+  (mongoose.models.User as mongoose.Model<IUserDocument>) ||
   mongoose.model<IUserDocument>("User", userSchema);
