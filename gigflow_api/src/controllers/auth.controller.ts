@@ -51,11 +51,19 @@ export const updateProfile = async (
   next: NextFunction,
 ) => {
   try {
-    const file = req.file;
-    const profilePicture = file ? `/uploads/profiles/${file.filename}` : undefined;
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+    const profilePicFile = files?.profilePicture?.[0] || req.file;
+    const cvFile = files?.cv?.[0];
+
+    const profilePicture = profilePicFile
+      ? `/uploads/profiles/${profilePicFile.filename}`
+      : undefined;
+    const cvUrl = cvFile ? `/uploads/cvs/${cvFile.filename}` : undefined;
+
     const user = await updateUserProfile(req.userId!, {
       ...req.body,
       ...(profilePicture ? { profilePicture } : {}),
+      ...(cvUrl ? { cvUrl } : {}),
     });
     sendSuccess(res, 200, "Profile updated successfully", user);
   } catch (error) {
@@ -110,7 +118,20 @@ export const updateUserById = async (
 ) => {
   try {
     const userId = req.params.id as string;
-    const user = await updateUserProfile(userId, req.body);
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+    const profilePicFile = files?.profilePicture?.[0] || req.file;
+    const cvFile = files?.cv?.[0];
+
+    const profilePicture = profilePicFile
+      ? `/uploads/profiles/${profilePicFile.filename}`
+      : undefined;
+    const cvUrl = cvFile ? `/uploads/cvs/${cvFile.filename}` : undefined;
+
+    const user = await updateUserProfile(userId, {
+      ...req.body,
+      ...(profilePicture ? { profilePicture } : {}),
+      ...(cvUrl ? { cvUrl } : {}),
+    });
     sendSuccess(res, 200, "User updated successfully", user);
   } catch (error) {
     next(error);
