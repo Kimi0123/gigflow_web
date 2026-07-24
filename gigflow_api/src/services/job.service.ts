@@ -227,18 +227,27 @@ export const submitProposal = async (freelancerId: string, jobId: string, input:
     });
   }
 
-  const existing = await ProposalModel.findOne({ job: jobId, freelancer: freelancerId });
-  if (existing) {
-    throw new HttpError(409, "You have already submitted a proposal for this job", {
-      code: ErrorCodes.CONFLICT,
-    });
-  }
+const existing = await ProposalModel.findOne({ job: jobId, freelancer: freelancerId });
 
-  const proposal = await ProposalModel.create({
+if (existing && existing.status !== "withdrawn") {
+  throw new HttpError(409, "You have already submitted a proposal for this job", {
+    code: ErrorCodes.CONFLICT,
+  });
+}
+
+let proposal;
+if (existing) {
+  // Reactivate the withdrawn proposal instead of creating a duplicate
+  // (a hard unique index on {job, freelancer} would reject a second document anyway)
+  existing.set({ ...data, status: "pending" });
+  proposal = await existing.save();
+} else {
+  proposal = await ProposalModel.create({
     job: jobId,
     freelancer: freelancerId,
     ...data,
   });
+}
 
   // Increment proposal count on the job
   await JobModel.findByIdAndUpdate(jobId, { $inc: { proposalCount: 1 } });
