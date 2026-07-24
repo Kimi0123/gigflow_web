@@ -6,9 +6,13 @@ import { HttpError } from "../errors/http-error";
 import { UserModel } from "../models/user.model";
 import { toAuthUserResponse } from "../utils/user.mapper";
 
-type AccessTokenPayload = {
+export type AccessTokenPayload = {
   sub: string;
   role: string;
+};
+
+export const verifyToken = (token: string): AccessTokenPayload => {
+  return jwt.verify(token, getJwtSecret()) as AccessTokenPayload;
 };
 
 export const authenticate = async (
@@ -33,7 +37,7 @@ export const authenticate = async (
       });
     }
 
-    const payload = jwt.verify(token, getJwtSecret()) as AccessTokenPayload;
+    const payload = verifyToken(token);
     const user = await UserModel.findById(payload.sub);
 
     if (!user) {
