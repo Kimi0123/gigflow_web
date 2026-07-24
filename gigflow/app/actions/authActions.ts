@@ -120,6 +120,7 @@ export const loginAction = async (
 export const updateProfileAction = async (
   values: UpdateProfileFormValues,
   profilePicture: File | null,
+  cvFile: File | null,
   token: string
 ): Promise<ActionResult<AuthUser>> => {
   const parsed = updateProfileSchema.safeParse(values);
@@ -136,7 +137,12 @@ export const updateProfileAction = async (
   formData.set("firstName", parsed.data.firstName);
   formData.set("lastName", parsed.data.lastName);
   formData.set("phoneNumber", parsed.data.phoneNumber);
+  if (parsed.data.bio !== undefined) formData.set("bio", parsed.data.bio);
+  if (parsed.data.title !== undefined) formData.set("title", parsed.data.title);
+  if (parsed.data.skills !== undefined) formData.set("skills", parsed.data.skills);
+
   if (profilePicture) formData.set("profilePicture", profilePicture);
+  if (cvFile) formData.set("cv", cvFile);
 
   try {
     const response = await updateProfileApi(formData, token);
