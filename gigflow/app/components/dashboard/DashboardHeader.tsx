@@ -3,8 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../providers/AuthContext";
+import { useSocket } from "../../providers/SocketContext";
+import { messageApi } from "../../lib/api/messageApi";
 
 interface DashboardHeaderProps {
   searchPlaceholder?: string;
@@ -20,13 +22,42 @@ export default function DashboardHeader({
   activeNav,
 }: DashboardHeaderProps) {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
+  const { socket } = useSocket();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
 
   const fullName = user
     ? user.fullName || `${user.firstName} ${user.lastName}`.trim()
     : "";
   const initials = user?.firstName?.slice(0, 2).toUpperCase() || "??";
+
+  const fetchUnreadCount = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await messageApi.getUnreadCount(token);
+      setUnreadCount(data.unreadCount);
+    } catch {
+      // non-critical
+    }
+  }, [token]);
+
+  useEffect(() => {
+    void fetchUnreadCount();
+  }, [fetchUnreadCount, activeNav]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewMessage = () => {
+      void fetchUnreadCount();
+    };
+
+    socket.on("new_message", handleNewMessage);
+    return () => {
+      socket.off("new_message", handleNewMessage);
+    };
+  }, [socket, fetchUnreadCount]);
 
   const handleLogout = () => {
     logout();
@@ -81,6 +112,22 @@ export default function DashboardHeader({
               Find Work
             </Link>
           )}
+
+          {/* Messages shortcut icon with unread badge */}
+          <button
+            type="button"
+            aria-label="Messages"
+            onClick={() => onNavClick?.("Messages")}
+            className="relative text-[#63748e] transition hover:text-[#38bdf8]"
+            title="Messages"
+          >
+            <ChatBubbleIcon className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#38bdf8] px-1 text-[9px] font-bold text-white shadow-sm">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </button>
 
           {/* Notifications */}
           <button
@@ -225,6 +272,13 @@ function BriefcaseIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" /><path d="M4 7h16v13H4z" />
+    </svg>
+  );
+}
+function ChatBubbleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
