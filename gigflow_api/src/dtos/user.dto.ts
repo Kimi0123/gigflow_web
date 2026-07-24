@@ -75,6 +75,32 @@ export const updateProfileDto = z
       .trim()
       .max(255, "Profile picture URL must be 255 characters or fewer")
       .optional(),
+    bio: z
+      .string()
+      .trim()
+      .max(500, "Bio must be 500 characters or fewer")
+      .optional(),
+    title: z
+      .string()
+      .trim()
+      .max(100, "Title must be 100 characters or fewer")
+      .optional(),
+    skills: z
+      .union([
+        z.array(z.string().trim()),
+        z.string().transform((val) => {
+          try {
+            const parsed = JSON.parse(val);
+            if (Array.isArray(parsed)) return parsed.map((s) => String(s).trim());
+          } catch {
+            // ignore
+          }
+          return val.split(",").map((s) => s.trim()).filter(Boolean);
+        }),
+      ])
+      .pipe(z.array(z.string().trim()).max(20, "Cannot specify more than 20 skills"))
+      .optional(),
+    cvUrl: z.string().trim().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: "At least one field is required to update your profile",
