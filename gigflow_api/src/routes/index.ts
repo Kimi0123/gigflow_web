@@ -4,6 +4,7 @@ import authRoutes from "./auth.route";
 import contractRoutes from "./contract.route";
 import healthRoutes from "./health.route";
 import jobRoutes from "./job.route";
+import messageRoutes from "./message.route";
 import reviewRoutes from "./review.route";
 
 const router = Router();
@@ -14,5 +15,6 @@ router.use("/admin/users", adminUserRoutes);
 router.use("/jobs", jobRoutes);
 router.use("/contracts", contractRoutes);
 router.use("/reviews", reviewRoutes);
+router.use("/messages", messageRoutes);
 
 export default router;
