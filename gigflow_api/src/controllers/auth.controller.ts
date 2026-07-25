@@ -5,8 +5,11 @@ import {
   loginUser,
   refreshAccessToken,
   registerUser,
+  requestPasswordReset,
+  resetPassword,
   updateUserPassword,
   updateUserProfile,
+  verifyResetCode,
 } from "../services/user.service";
 import { sendSuccess } from "../utils/api-response";
 
@@ -154,3 +157,48 @@ export const deleteUserByIdHandler = async (
     next(error);
   }
 };
+
+export const forgotPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    await requestPasswordReset(req.body);
+    sendSuccess(
+      res,
+      200,
+      "If an account with that email exists, a reset link has been sent",
+      {},
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifyResetCodeHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    await verifyResetCode(req.body);
+    sendSuccess(res, 200, "Reset code is valid", {});
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resetPasswordHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    await resetPassword(req.body);
+    sendSuccess(res, 200, "Password reset successfully", {});
+  } catch (error) {
+    next(error);
+  }
+};
+
