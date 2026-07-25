@@ -172,3 +172,31 @@ export type AdminUserCreateDto = z.infer<typeof adminUserCreateDto>;
 export type AdminUserUpdateDto = z.infer<typeof adminUserUpdateDto>;
 export type AdminUserListQueryDto = z.infer<typeof adminUserListQueryDto>;
 
+export const forgotPasswordDto = z.object({
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("Please enter a valid email address"),
+});
+
+export const verifyResetCodeDto = z.object({
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("Please enter a valid email address"),
+  code: z
+    .string()
+    .length(6, "Code must be 6 digits")
+    .regex(/^\d+$/, "Code must contain only digits"),
+});
+
+export const resetPasswordDto = verifyResetCodeDto.extend({
+  newPassword: passwordSchema,
+});
+
+export type ForgotPasswordDto = z.infer<typeof forgotPasswordDto>;
+export type VerifyResetCodeDto = z.infer<typeof verifyResetCodeDto>;
+export type ResetPasswordDto = z.infer<typeof resetPasswordDto>;
+
