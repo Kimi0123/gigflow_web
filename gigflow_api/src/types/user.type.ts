@@ -12,4 +12,6 @@ export interface IUser {
   title?: string;
   skills?: string[];
   cvUrl?: string;
+  resetPasswordTokenHash?: string;
+  resetPasswordExpires?: Date;
 }

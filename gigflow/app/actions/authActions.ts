@@ -1,22 +1,31 @@
 import { z } from "zod";
 import {
   AuthApiError,
+  forgotPasswordApi,
   loginUserApi,
   registerUserApi,
+  resetPasswordApi,
   updatePasswordApi,
   updateProfileApi,
+  verifyResetCodeApi,
   type LoginResponse,
   type AuthUser,
 } from "../lib/api/authApi";
 import {
+  forgotPasswordSchema,
   loginSchema,
   registerSchema,
+  resetPasswordSchema,
   updatePasswordSchema,
   updateProfileSchema,
+  verifyResetCodeSchema,
+  type ForgotPasswordFormValues,
   type LoginFormValues,
   type RegisterFormValues,
+  type ResetPasswordFormValues,
   type UpdatePasswordFormValues,
   type UpdateProfileFormValues,
+  type VerifyResetCodeFormValues,
 } from "../lib/validations/auth";
 
 type ActionResult<T> =
@@ -207,3 +216,125 @@ export const updatePasswordAction = async (
     };
   }
 };
+
+export const forgotPasswordAction = async (
+  values: ForgotPasswordFormValues
+): Promise<ActionResult<unknown>> => {
+  const parsed = forgotPasswordSchema.safeParse(values);
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: "Please fix the highlighted fields",
+      fieldErrors: zodFieldErrors(parsed.error),
+    };
+  }
+
+  try {
+    const response = await forgotPasswordApi(parsed.data.email);
+
+    return {
+      ok: true,
+      message: response.message,
+      data: response.data,
+    };
+  } catch (error) {
+    if (error instanceof AuthApiError) {
+      return {
+        ok: false,
+        message: error.message,
+        fieldErrors: error.fieldErrors,
+      };
+    }
+
+    return {
+      ok: false,
+      message: "Unable to process password reset request. Please try again.",
+      fieldErrors: {},
+    };
+  }
+};
+
+export const verifyResetCodeAction = async (
+  values: VerifyResetCodeFormValues
+): Promise<ActionResult<unknown>> => {
+  const parsed = verifyResetCodeSchema.safeParse(values);
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: "Please fix the highlighted fields",
+      fieldErrors: zodFieldErrors(parsed.error),
+    };
+  }
+
+  try {
+    const response = await verifyResetCodeApi(
+      parsed.data.email,
+      parsed.data.code
+    );
+
+    return {
+      ok: true,
+      message: response.message,
+      data: response.data,
+    };
+  } catch (error) {
+    if (error instanceof AuthApiError) {
+      return {
+        ok: false,
+        message: error.message,
+        fieldErrors: error.fieldErrors,
+      };
+    }
+
+    return {
+      ok: false,
+      message: "Unable to verify reset code. Please try again.",
+      fieldErrors: {},
+    };
+  }
+};
+
+export const resetPasswordAction = async (
+  values: ResetPasswordFormValues
+): Promise<ActionResult<unknown>> => {
+  const parsed = resetPasswordSchema.safeParse(values);
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: "Please fix the highlighted fields",
+      fieldErrors: zodFieldErrors(parsed.error),
+    };
+  }
+
+  try {
+    const response = await resetPasswordApi(
+      parsed.data.email,
+      parsed.data.code,
+      parsed.data.newPassword
+    );
+
+    return {
+      ok: true,
+      message: response.message,
+      data: response.data,
+    };
+  } catch (error) {
+    if (error instanceof AuthApiError) {
+      return {
+        ok: false,
+        message: error.message,
+        fieldErrors: error.fieldErrors,
+      };
+    }
+
+    return {
+      ok: false,
+      message: "Unable to reset password. Please try again.",
+      fieldErrors: {},
+    };
+  }
+};
+

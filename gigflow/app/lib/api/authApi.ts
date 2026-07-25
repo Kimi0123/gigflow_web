@@ -136,3 +136,27 @@ export const updatePasswordApi = async (
   return request<AuthUser>("/auth/update/password", values, token, "PATCH");
 };
 
+export const forgotPasswordApi = async (email: string) => {
+  return request<Record<string, unknown>>("/auth/forgot-password", { email });
+};
+
+export const verifyResetCodeApi = async (email: string, code: string) => {
+  return request<Record<string, unknown>>("/auth/verify-reset-code", {
+    email,
+    code,
+  });
+};
+
+export const resetPasswordApi = async (
+  email: string,
+  code: string,
+  newPassword: string
+) => {
+  return request<Record<string, unknown>>("/auth/reset-password", {
+    email,
+    code,
+    newPassword,
+  });
+};
+
+
