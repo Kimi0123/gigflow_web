@@ -60,6 +60,18 @@ export const updateProfileSchema = z.object({
     .trim()
     .min(5, "Phone number must be at least 5 characters")
     .max(20, "Phone number must be 20 characters or fewer"),
+  bio: z
+    .string()
+    .trim()
+    .max(500, "Bio must be 500 characters or fewer")
+    .optional(),
+  title: z
+    .string()
+    .trim()
+    .max(100, "Title must be 100 characters or fewer")
+    .optional(),
+  // stored as comma-separated string in the form; split/trimmed in the action before sending
+  skills: z.string().trim().optional(),
 });
 
 export const updatePasswordSchema = z

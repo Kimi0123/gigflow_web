@@ -26,6 +26,10 @@ export type AuthUser = {
   profilePicture?: string;
   averageRating?: number;
   totalReviews?: number;
+  bio?: string;
+  title?: string;
+  skills?: string[];
+  cvUrl?: string;
 };
 
 export type LoginResponse = {

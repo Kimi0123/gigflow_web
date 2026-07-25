@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "../../providers/AuthContext";
 import {
   type ClientStats,
@@ -39,6 +40,7 @@ const navItems = [
   { label: "Proposals", href: "#" },
   { label: "Active Contracts", href: "#" },
   { label: "Messages", href: "#" },
+  { label: "Find Freelancers", href: "/freelancers" },
 ];
 
 interface PostJobForm {
@@ -572,7 +574,16 @@ function ProposalRow({
           </div>
           <div className="min-w-0">
             <p className="text-[13px] font-bold text-[#111d31] truncate flex items-center gap-2">
-              {fl?.name ?? "Anonymous Freelancer"}
+              {fl?.id ? (
+                <Link
+                  href={`/freelancers/${fl.id}`}
+                  className="transition hover:text-[#38bdf8] hover:underline"
+                >
+                  {fl?.name ?? "Anonymous Freelancer"}
+                </Link>
+              ) : (
+                fl?.name ?? "Anonymous Freelancer"
+              )}
               {fl?.id && <UserRatingDisplay token={token} userId={fl.id} />}
             </p>
             <p className="text-[11px] text-[#70829d]">{fl?.email}</p>
