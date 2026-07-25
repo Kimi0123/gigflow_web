@@ -66,6 +66,14 @@ const userSchema = new Schema<IUserDocument>(
       type: String,
       trim: true,
     },
+    resetPasswordTokenHash: {
+      type: String,
+      select: false,
+    },
+    resetPasswordExpires: {
+      type: Date,
+      select: false,
+    },
   },
   {
     timestamps: true,
