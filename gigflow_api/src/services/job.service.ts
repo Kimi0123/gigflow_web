@@ -10,9 +10,12 @@ import { HttpError } from "../errors/http-error";
 import { ContractModel } from "../models/contract.model";
 import { IJobDocument, JobModel } from "../models/job.model";
 import { ProposalModel } from "../models/proposal.model";
+import { SavedJobModel } from "../models/savedJob.model";
 import { UserModel } from "../models/user.model";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const formatBudget = (doc: IJobDocument): string => {
   const min = `Rs. ${doc.budgetMin.toLocaleString()}`;
   if (doc.budgetMax && doc.budgetMax > doc.budgetMin) {
@@ -78,13 +81,14 @@ export const getOpenJobs = async (query: {
       filter.skills = { $in: skillArr };
     }
   }
-  if (query.search) {
-    filter.$or = [
-      { title: { $regex: query.search, $options: "i" } },
-      { description: { $regex: query.search, $options: "i" } },
-      { skills: { $in: [new RegExp(query.search, "i")] } },
-    ];
-  }
+if (query.search) {
+  const safeSearch = escapeRegex(query.search);
+  filter.$or = [
+    { title: { $regex: safeSearch, $options: "i" } },
+    { description: { $regex: safeSearch, $options: "i" } },
+    { skills: { $in: [new RegExp(safeSearch, "i")] } },
+  ];
+}
 
   const page = Math.max(1, Number(query.page) || 1);
   const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
@@ -374,6 +378,50 @@ export const getFreelancerStats = async (freelancerId: string) => {
     jobsWon: accepted,
     totalRejected: rejected,
   };
+};
+
+// ─── Saved Jobs Service ───────────────────────────────────────────────────────
+
+export const saveJob = async (freelancerId: string, jobId: string) => {
+  const job = await JobModel.findById(jobId);
+  if (!job) {
+    throw new HttpError(404, "Job not found", { code: ErrorCodes.NOT_FOUND });
+  }
+
+  try {
+    await SavedJobModel.create({ freelancer: freelancerId, job: jobId });
+  } catch (error: any) {
+    if (error.code === 11000) {
+      // Duplicate key error — treat as idempotent success
+      return { jobId, saved: true };
+    }
+    throw error;
+  }
+
+  return { jobId, saved: true };
+};
+
+export const unsaveJob = async (freelancerId: string, jobId: string) => {
+  await SavedJobModel.findOneAndDelete({ freelancer: freelancerId, job: jobId });
+  return { jobId, saved: false };
+};
+
+export const getSavedJobs = async (freelancerId: string) => {
+  const savedDocs = await SavedJobModel.find({ freelancer: freelancerId })
+    .populate({
+      path: "job",
+      populate: {
+        path: "client",
+        select: "firstName lastName",
+      },
+    })
+    .sort({ createdAt: -1 });
+
+  const validJobs = savedDocs
+    .map((doc) => doc.job as unknown as IJobDocument)
+    .filter((job) => job && job._id);
+
+  return validJobs.map((job) => serializeJob(job, freelancerId));
 };
 
 // ─── Serializers ──────────────────────────────────────────────────────────────
