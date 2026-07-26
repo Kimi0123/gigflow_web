@@ -55,10 +55,14 @@ export default function FreelancerDashboard() {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loadingContracts, setLoadingContracts] = useState(false);
 
-  // Saved / apply state
-  const [savedJobs, setSavedJobs] = useState<string[]>([]);
+  // Real Saved Jobs state
+  const [savedJobObjects, setSavedJobObjects] = useState<Job[]>([]);
+  const [loadingSavedJobs, setLoadingSavedJobs] = useState(false);
+
+  // Apply & Job details modal state
   const [appliedJobIds, setAppliedJobIds] = useState<string[]>([]);
   const [applyingToJob, setApplyingToJob] = useState<Job | null>(null);
+  const [viewingJobDetails, setViewingJobDetails] = useState<Job | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const firstName = user?.firstName || "there";
@@ -67,6 +71,11 @@ export default function FreelancerDashboard() {
     setToast({ type, message });
     setTimeout(() => setToast(null), 4500);
   };
+
+  const savedJobIds = useMemo(
+    () => new Set(savedJobObjects.map((j) => j.id)),
+    [savedJobObjects]
+  );
 
   // ─── Data fetching ──────────────────────────────────────────────────────────
   const fetchJobs = useCallback(async () => {
@@ -99,6 +108,24 @@ export default function FreelancerDashboard() {
     const t = setTimeout(() => { void fetchJobs(); }, searchQuery ? 400 : 0);
     return () => clearTimeout(t);
   }, [fetchJobs, searchQuery]);
+
+  const fetchSavedJobs = useCallback(async () => {
+    if (!token) return;
+    setLoadingSavedJobs(true);
+    try {
+      const data = await jobApi.savedJobs(token);
+      setSavedJobObjects(data);
+    } catch {
+      showToast("error", "Failed to load saved jobs.");
+    } finally {
+      setLoadingSavedJobs(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  useEffect(() => {
+    fetchSavedJobs();
+  }, [fetchSavedJobs]);
 
   const fetchProposals = useCallback(async () => {
     if (!token) return;
@@ -152,10 +179,33 @@ export default function FreelancerDashboard() {
   }, [activeNav, fetchContracts]);
 
   // ─── Actions ────────────────────────────────────────────────────────────────
-  const toggleSave = (id: string) =>
-    setSavedJobs((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
-    );
+  const toggleSave = async (job: Job) => {
+    if (!token) return;
+    const isSaved = savedJobIds.has(job.id);
+
+    // Optimistic update
+    if (isSaved) {
+      setSavedJobObjects((prev) => prev.filter((j) => j.id !== job.id));
+    } else {
+      setSavedJobObjects((prev) => [job, ...prev]);
+    }
+
+    try {
+      if (isSaved) {
+        await jobApi.unsave(token, job.id);
+      } else {
+        await jobApi.save(token, job.id);
+      }
+    } catch {
+      // Rollback on failure
+      if (isSaved) {
+        setSavedJobObjects((prev) => [job, ...prev]);
+      } else {
+        setSavedJobObjects((prev) => prev.filter((j) => j.id !== job.id));
+      }
+      showToast("error", `Failed to ${isSaved ? "unsave" : "save"} job.`);
+    }
+  };
 
   const toggleSkill = (skill: string) =>
     setCheckedSkills((prev) =>
@@ -187,17 +237,11 @@ export default function FreelancerDashboard() {
     }
   };
 
-  // ─── Derived data ───────────────────────────────────────────────────────────
-  const savedJobObjects = useMemo(
-    () => jobs.filter((j) => savedJobs.includes(j.id)),
-    [jobs, savedJobs]
-  );
-
   const statCards = [
     { label: "Active Proposals", value: stats?.activeProposals ?? "—", icon: "send", color: "#38bdf8", bg: "#e0f7ff" },
     { label: "Jobs Won", value: stats?.jobsWon ?? "—", icon: "trophy", color: "#22c55e", bg: "#dcfce7" },
     { label: "Profile Views", value: "—", icon: "eye", color: "#818cf8", bg: "#ede9fe" },
-    { label: "Saved Jobs", value: savedJobs.length, icon: "bookmark", color: "#f59e0b", bg: "#fef3c7" },
+    { label: "Saved Jobs", value: savedJobObjects.length, icon: "bookmark", color: "#f59e0b", bg: "#fef3c7" },
   ];
 
   return (
@@ -328,7 +372,7 @@ export default function FreelancerDashboard() {
 
               <div className="rounded-xl border border-[#e9eef5] bg-white p-4">
                 <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.22em] text-[#70829d]">Saved Jobs</p>
-                <p className="text-[28px] font-black leading-none text-[#111d31]">{savedJobs.length}</p>
+                <p className="text-[28px] font-black leading-none text-[#111d31]">{savedJobObjects.length}</p>
                 <button type="button" onClick={() => setActiveNav("Saved Jobs")} className="mt-2 text-[11px] font-bold text-[#38bdf8] hover:text-[#0284c7]">
                   View saved →
                 </button>
@@ -386,10 +430,11 @@ export default function FreelancerDashboard() {
                       key={job.id}
                       job={job}
                       highlighted={i < 2}
-                      isSaved={savedJobs.includes(job.id)}
+                      isSaved={savedJobIds.has(job.id)}
                       isApplied={appliedJobIds.includes(job.id)}
-                      onSave={() => toggleSave(job.id)}
+                      onSave={() => toggleSave(job)}
                       onApply={() => setApplyingToJob(job)}
+                      onViewDetails={() => setViewingJobDetails(job)}
                     />
                   ))}
                 </div>
@@ -411,9 +456,12 @@ export default function FreelancerDashboard() {
         {activeNav === "Saved Jobs" && (
           <SavedJobsTab
             jobs={savedJobObjects}
-            onUnsave={(id) => setSavedJobs((prev) => prev.filter((s) => s !== id))}
+            loading={loadingSavedJobs}
+            onUnsave={(job) => toggleSave(job)}
             onApply={(job) => setApplyingToJob(job)}
+            onViewDetails={(job) => setViewingJobDetails(job)}
             appliedJobs={appliedJobIds}
+            savedJobIds={savedJobIds}
           />
         )}
 
@@ -437,6 +485,22 @@ export default function FreelancerDashboard() {
           />
         )}
       </div>
+
+      {/* Job Details Modal */}
+      {viewingJobDetails && (
+        <JobDetailsModal
+          job={viewingJobDetails}
+          isSaved={savedJobIds.has(viewingJobDetails.id)}
+          isApplied={appliedJobIds.includes(viewingJobDetails.id)}
+          onClose={() => setViewingJobDetails(null)}
+          onSave={() => toggleSave(viewingJobDetails)}
+          onApply={() => {
+            const targetJob = viewingJobDetails;
+            setViewingJobDetails(null);
+            setApplyingToJob(targetJob);
+          }}
+        />
+      )}
 
       {/* Apply Modal */}
       {applyingToJob && token && (
@@ -608,10 +672,21 @@ function ContractsTab({
 
 // ─── Job Card ─────────────────────────────────────────────────────────────────
 function JobCard({
-  job, highlighted, isSaved, isApplied, onSave, onApply,
+  job,
+  highlighted,
+  isSaved,
+  isApplied,
+  onSave,
+  onApply,
+  onViewDetails,
 }: {
-  job: Job; highlighted: boolean; isSaved: boolean; isApplied: boolean;
-  onSave: () => void; onApply: () => void;
+  job: Job;
+  highlighted: boolean;
+  isSaved: boolean;
+  isApplied: boolean;
+  onSave: () => void;
+  onApply: () => void;
+  onViewDetails?: () => void;
 }) {
   // Generate a consistent colour from the company name
   const colors = ["#38bdf8", "#818cf8", "#34d399", "#fb923c", "#a855f7", "#f59e0b"];
@@ -632,8 +707,24 @@ function JobCard({
             <span className="font-bold text-[#374151]">{job.client.name || "GigFlow Client"}</span>
             <span className="text-[#9ca3af]">{job.postedAt}</span>
           </div>
-          <h2 className="mt-2 text-[16px] font-extrabold leading-tight text-[#111d31]">{job.title}</h2>
+          <h2
+            onClick={onViewDetails}
+            className="mt-2 text-[16px] font-extrabold leading-tight text-[#111d31] cursor-pointer hover:text-[#38bdf8] transition-colors"
+          >
+            {job.title}
+          </h2>
           <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-[#6b7280]">{job.description}</p>
+
+          {onViewDetails && (
+            <button
+              type="button"
+              onClick={onViewDetails}
+              className="mt-1.5 text-[12px] font-bold text-[#38bdf8] hover:underline inline-flex items-center gap-1"
+            >
+              View full details →
+            </button>
+          )}
+
           <div className="mt-3 flex flex-wrap gap-1.5">
             {job.skills.map((tag) => (
               <span key={tag} className="rounded-md border border-[#dce5ef] bg-[#f0f8ff] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-[#4b6a8a]">
@@ -743,11 +834,41 @@ function ProposalsTab({
 
 // ─── Saved Jobs Tab ───────────────────────────────────────────────────────────
 function SavedJobsTab({
-  jobs, onUnsave, onApply, appliedJobs,
+  jobs,
+  loading,
+  onUnsave,
+  onApply,
+  onViewDetails,
+  appliedJobs,
+  savedJobIds,
 }: {
-  jobs: Job[]; onUnsave: (id: string) => void;
-  onApply: (job: Job) => void; appliedJobs: string[];
+  jobs: Job[];
+  loading: boolean;
+  onUnsave: (job: Job) => void;
+  onApply: (job: Job) => void;
+  onViewDetails: (job: Job) => void;
+  appliedJobs: string[];
+  savedJobIds: Set<string>;
 }) {
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2].map((i) => (
+          <div key={i} className="rounded-2xl border border-[#e9eef5] bg-white p-6">
+            <div className="flex gap-4">
+              <div className="h-10 w-10 animate-pulse rounded-xl bg-[#f1f5f9]" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-3/4 animate-pulse rounded bg-[#f1f5f9]" />
+                <div className="h-3 w-1/2 animate-pulse rounded bg-[#f1f5f9]" />
+                <div className="h-3 w-full animate-pulse rounded bg-[#f1f5f9]" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   if (jobs.length === 0) {
     return (
       <div className="rounded-2xl border border-[#e9eef5] bg-white py-20 text-center">
@@ -760,10 +881,149 @@ function SavedJobsTab({
   return (
     <div className="space-y-4">
       {jobs.map((job) => (
-        <JobCard key={job.id} job={job} highlighted={false} isSaved={true}
+        <JobCard
+          key={job.id}
+          job={job}
+          highlighted={false}
+          isSaved={savedJobIds.has(job.id)}
           isApplied={appliedJobs.includes(job.id)}
-          onSave={() => onUnsave(job.id)} onApply={() => onApply(job)} />
+          onSave={() => onUnsave(job)}
+          onApply={() => onApply(job)}
+          onViewDetails={() => onViewDetails(job)}
+        />
       ))}
+    </div>
+  );
+}
+
+// ─── Job Details Modal ────────────────────────────────────────────────────────
+function JobDetailsModal({
+  job,
+  isSaved,
+  isApplied,
+  onClose,
+  onSave,
+  onApply,
+}: {
+  job: Job;
+  isSaved: boolean;
+  isApplied: boolean;
+  onClose: () => void;
+  onSave: () => void;
+  onApply: () => void;
+}) {
+  const colors = ["#38bdf8", "#818cf8", "#34d399", "#fb923c", "#a855f7", "#f59e0b"];
+  const avatarColor = colors[(job.client.name?.charCodeAt(0) ?? 0) % colors.length];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-[640px] overflow-hidden rounded-2xl bg-white shadow-[0_32px_80px_rgba(0,0,0,0.22)]">
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-[#e9eef5] px-7 py-5">
+          <div className="flex items-center gap-3 min-w-0 pr-4">
+            <div
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[12px] font-black text-white"
+              style={{ background: avatarColor }}
+            >
+              {job.client.initials || "GF"}
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-[18px] font-black text-[#111d31] leading-snug">{job.title}</h2>
+              <p className="text-[12px] text-[#70829d]">
+                Posted by <span className="font-bold text-[#374151]">{job.client.name || "GigFlow Client"}</span> · {job.postedAt}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#94a3b8] hover:bg-[#f1f5f9]"
+          >
+            <XIcon className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Details body */}
+        <div className="max-h-[65vh] overflow-y-auto space-y-6 px-7 py-6">
+          {/* Key metrics grid */}
+          <div className="grid grid-cols-3 gap-3 rounded-xl border border-[#e9eef5] bg-[#f7f8fa] p-4">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#70829d]">Budget</p>
+              <p className="mt-0.5 text-[15px] font-black text-[#111d31]">{job.budget}</p>
+              <p className="text-[11px] text-[#6b7280] uppercase font-semibold">{job.budgetType}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#70829d]">Duration</p>
+              <p className="mt-0.5 text-[14px] font-bold text-[#111d31] flex items-center gap-1">
+                <ClockIcon className="h-3.5 w-3.5 text-[#70829d]" /> {job.duration}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#70829d]">Proposals</p>
+              <p className="mt-0.5 text-[14px] font-bold text-[#111d31] flex items-center gap-1">
+                <UsersIcon className="h-3.5 w-3.5 text-[#70829d]" /> {job.proposalCount}
+              </p>
+            </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <h3 className="mb-2 text-[12px] font-bold uppercase tracking-[0.14em] text-[#374151]">Job Description</h3>
+            <p className="text-[14px] leading-relaxed text-[#374151] whitespace-pre-line">{job.description}</p>
+          </div>
+
+          {/* Skills */}
+          {job.skills && job.skills.length > 0 && (
+            <div>
+              <h3 className="mb-2 text-[12px] font-bold uppercase tracking-[0.14em] text-[#374151]">Required Skills</h3>
+              <div className="flex flex-wrap gap-2">
+                {job.skills.map((skill) => (
+                  <span
+                    key={skill}
+                    className="rounded-lg border border-[#dce5ef] bg-[#f0f8ff] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[#4b6a8a]"
+                  >
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer Actions */}
+        <div className="flex items-center justify-between border-t border-[#e9eef5] px-7 py-4">
+          <button
+            type="button"
+            onClick={onSave}
+            className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-[13px] font-bold transition ${
+              isSaved
+                ? "border-[#38bdf8] bg-[#e0f7ff] text-[#0284c7]"
+                : "border-[#dce5ef] text-[#6b7280] hover:border-[#38bdf8] hover:text-[#38bdf8]"
+            }`}
+          >
+            <BookmarkIcon className="h-4 w-4" filled={isSaved} />
+            {isSaved ? "Saved" : "Save Job"}
+          </button>
+
+          {isApplied ? (
+            <span className="flex items-center gap-1.5 rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-5 py-2.5 text-[13px] font-bold text-[#15803d]">
+              <CheckCircleIcon className="h-4 w-4" /> Applied
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onApply();
+              }}
+              className="flex items-center gap-2 rounded-xl bg-[#38bdf8] px-6 py-2.5 text-[13px] font-bold uppercase tracking-[0.1em] text-white transition hover:bg-[#0ea5e9]"
+            >
+              Apply Now <ArrowRightIcon className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

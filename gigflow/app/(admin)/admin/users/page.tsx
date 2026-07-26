@@ -73,25 +73,15 @@ export default function AdminUsersPage() {
     }
   }, [isAdmin, page, search, token]);
 
-  useEffect(() => {
-    if (isAuthLoading) return;
+ useEffect(() => {
+  if (!token || !isAdmin) return;
 
-    if (!token) {
-      router.push("/login");
-      return;
-    }
+  const loadTimer = window.setTimeout(() => {
+    void loadUsers();
+  }, 0);
 
-    if (!isAdmin) {
-      router.push("/dashboard");
-      return;
-    }
-
-    const loadTimer = window.setTimeout(() => {
-      void loadUsers();
-    }, 0);
-
-    return () => window.clearTimeout(loadTimer);
-  }, [isAdmin, isAuthLoading, loadUsers, router, token]);
+  return () => window.clearTimeout(loadTimer);
+}, [isAdmin, loadUsers, token]);
 
   const pageSummary = useMemo(() => {
     if (meta.total === 0) return "0 users";
@@ -211,39 +201,11 @@ export default function AdminUsersPage() {
     setSearch(searchInput);
   };
 
-  const handleLogout = () => {
-    logout();
-    router.push("/login");
-  };
-
-  if (isAuthLoading || !token || !isAdmin) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-[#f7f9fc] px-6 text-[#111d31]">
-        <div className="border border-[#dfe7f0] bg-white px-6 py-5 text-[13px] font-bold uppercase tracking-[0.2em] text-[#667893]">
-          Checking admin access
-        </div>
-      </main>
-    );
-  }
-
   return (
-    <main className="min-h-screen bg-[#f7f9fc] text-[#111d31]">
-      <header className="border-b border-[#e1e8f0] bg-white">
-        <div className="flex min-h-[64px] flex-col gap-4 px-5 py-4 md:flex-row md:items-center md:justify-between lg:px-8">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[#6f8099]">Admin Panel</p>
-            <h1 className="mt-1 text-[26px] font-black tracking-[0.02em]">User Management</h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Link className="border border-[#dce6f0] bg-white px-4 py-2 text-[12px] font-bold text-[#5f708a]" href="/dashboard">
-              Dashboard
-            </Link>
-            <button className="border border-[#f0d3d3] bg-white px-4 py-2 text-[12px] font-bold text-[#c94a4a]" onClick={handleLogout} type="button">
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
+    <div>
+      <div className="border-b border-[#e1e8f0] bg-white px-5 py-4 lg:px-8">
+        <h1 className="text-[24px] font-black tracking-[0.02em]">User Management</h1>
+      </div>
 
       <section className="px-5 py-6 lg:px-8">
         <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
@@ -425,7 +387,7 @@ export default function AdminUsersPage() {
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }
 

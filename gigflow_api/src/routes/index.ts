@@ -1,4 +1,5 @@
 import { Router } from "express";
+import adminAnalyticsRoutes from "./admin-analytics.route";
 import adminUserRoutes from "./admin-user.route";
 import authRoutes from "./auth.route";
 import contractRoutes from "./contract.route";
@@ -13,6 +14,7 @@ const router = Router();
 router.use("/health", healthRoutes);
 router.use("/auth", authRoutes);
 router.use("/admin/users", adminUserRoutes);
+router.use("/admin", adminAnalyticsRoutes);
 router.use("/jobs", jobRoutes);
 router.use("/contracts", contractRoutes);
 router.use("/reviews", reviewRoutes);
