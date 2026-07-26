@@ -197,6 +197,10 @@ export const jobApi = {
 
   // Freelancer: get saved jobs
   savedJobs: (token: string) => get<Job[]>("/jobs/saved/my-jobs", token),
+
+  // Freelancer: AI-generated cover letter draft
+  generateProposalDraft: (token: string, jobId: string) =>
+    post<{ draft: string }>(`/jobs/${jobId}/generate-proposal`, {}, token),
 };
 
 // ─── Proposal API ─────────────────────────────────────────────────────────────

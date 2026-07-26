@@ -1037,10 +1037,32 @@ function ApplyModal({
   const [form, setForm] = useState<SubmitProposalPayload>({ coverLetter: "", bidAmount: 0, deliveryTime: "" });
   const [errors, setErrors] = useState<{ coverLetter?: string; bidAmount?: string; deliveryTime?: string; api?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const update = (key: keyof SubmitProposalPayload, val: string | number) => {
     setForm((p) => ({ ...p, [key]: val }));
     setErrors((p) => ({ ...p, [key]: "" }));
+  };
+
+  const handleGenerateDraft = async () => {
+    if (form.coverLetter.trim().length > 0) {
+      const confirmed = window.confirm(
+        "This will replace your current cover letter with an AI-generated draft. Continue?"
+      );
+      if (!confirmed) return;
+    }
+    setIsGenerating(true);
+    setErrors((p) => ({ ...p, api: "" }));
+    try {
+      const { draft } = await jobApi.generateProposalDraft(token, job.id);
+      setForm((p) => ({ ...p, coverLetter: draft }));
+      setErrors((p) => ({ ...p, coverLetter: "" }));
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "AI draft generation is temporarily unavailable, please write your cover letter manually";
+      setErrors((p) => ({ ...p, api: msg }));
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1096,9 +1118,24 @@ function ApplyModal({
               </div>
             )}
             <div>
-              <label className="mb-1.5 block text-[12px] font-bold uppercase tracking-[0.14em] text-[#374151]">
-                Cover Letter <span className="text-[#dc2626]">*</span>
-              </label>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className="block text-[12px] font-bold uppercase tracking-[0.14em] text-[#374151]">
+                  Cover Letter <span className="text-[#dc2626]">*</span>
+                </label>
+                <button
+                  type="button"
+                  id="generate-ai-draft-btn"
+                  onClick={handleGenerateDraft}
+                  disabled={isGenerating || isSubmitting}
+                  className="flex items-center gap-1.5 rounded-xl border border-[#dce5ef] px-3 py-1.5 text-[11px] font-bold text-[#6b7280] transition hover:border-[#38bdf8] hover:text-[#38bdf8] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isGenerating ? (
+                    <><SpinnerIcon className="h-3 w-3 animate-spin" /> Generating...</>
+                  ) : (
+                    <>✨ Generate with AI</>
+                  )}
+                </button>
+              </div>
               <textarea rows={6} value={form.coverLetter}
                 onChange={(e) => update("coverLetter", e.target.value)}
                 placeholder="Introduce yourself and explain why you're the best fit for this job..."
