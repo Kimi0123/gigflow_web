@@ -40,3 +40,13 @@ export const getSmtpConfig = (): SmtpConfig => {
 
 export const getClientUrl = (): string =>
   process.env.CLIENT_URL || "http://localhost:3005";
+
+export const getGeminiApiKey = (): string => {
+  const key = process.env.GEMINI_API_KEY;
+
+  if (!key) {
+    throw new Error("GEMINI_API_KEY is missing in environment variables");
+  }
+
+  return key;
+};
