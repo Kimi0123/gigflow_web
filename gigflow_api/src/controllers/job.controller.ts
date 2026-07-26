@@ -9,7 +9,10 @@ import {
   getJobById,
   getJobProposals,
   getOpenJobs,
+  getSavedJobs,
+  saveJob,
   submitProposal,
+  unsaveJob,
   updateJob,
   updateProposalStatus,
   withdrawProposal,
@@ -191,6 +194,47 @@ export const getFreelancerStatsHandler = async (
   try {
     const stats = await getFreelancerStats(req.userId!);
     sendSuccess(res, 200, "Stats fetched successfully", stats);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── Saved Jobs Controllers ───────────────────────────────────────────────────
+
+export const saveJobHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const result = await saveJob(req.userId!, req.params.jobId as string);
+    sendSuccess(res, 200, "Job saved successfully", result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const unsaveJobHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const result = await unsaveJob(req.userId!, req.params.jobId as string);
+    sendSuccess(res, 200, "Job unsaved successfully", result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSavedJobsHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const jobs = await getSavedJobs(req.userId!);
+    sendSuccess(res, 200, "Saved jobs fetched successfully", jobs);
   } catch (error) {
     next(error);
   }
