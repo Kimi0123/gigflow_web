@@ -9,7 +9,10 @@ import {
   getJobByIdHandler,
   getJobProposalsHandler,
   getOpenJobsHandler,
+  getSavedJobsHandler,
+  saveJobHandler,
   submitProposalHandler,
+  unsaveJobHandler,
   updateJobHandler,
   updateProposalStatusHandler,
   withdrawProposalHandler,
@@ -24,9 +27,10 @@ const router = Router();
 router.get("/client/my-jobs", authorized, getClientJobsHandler);
 router.get("/client/stats", authorized, getClientStatsHandler);
 
-// ─── Freelancer: proposal static routes ──────────────────────────────────────
+// ─── Freelancer: proposal & saved jobs static routes ──────────────────────────
 router.get("/proposals/my-proposals", authorized, getFreelancerProposalsHandler);
 router.get("/proposals/stats", authorized, getFreelancerStatsHandler);
+router.get("/saved/my-jobs", authorized, getSavedJobsHandler);
 router.patch("/proposals/:proposalId/status", authorized, updateProposalStatusHandler);
 router.patch("/proposals/:proposalId/withdraw", authorized, withdrawProposalHandler);
 
@@ -38,6 +42,10 @@ router.post("/", authorized, createJobHandler);
 router.get("/:id", authorized, getJobByIdHandler);
 router.patch("/:id", authorized, updateJobHandler);
 router.delete("/:id", authorized, deleteJobHandler);
+
+// ─── Saved jobs on a specific job ─────────────────────────────────────────────
+router.post("/:jobId/save", authorized, saveJobHandler);
+router.delete("/:jobId/save", authorized, unsaveJobHandler);
 
 // ─── Proposals on a specific job ──────────────────────────────────────────────
 router.get("/:jobId/proposals", authorized, getJobProposalsHandler);
