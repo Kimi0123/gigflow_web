@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from "express";
+import { generateProposalDraft } from "../services/aiAssist.service";
 import {
   createJob,
   deleteJob,
@@ -129,6 +130,22 @@ export const submitProposalHandler = async (
   try {
     const proposal = await submitProposal(req.userId!, req.params.jobId as string, req.body);
     sendSuccess(res, 201, "Proposal submitted successfully", proposal);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const generateProposalDraftHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const result = await generateProposalDraft(
+      req.userId!,
+      req.params.jobId as string
+    );
+    sendSuccess(res, 200, "Proposal draft generated successfully", result);
   } catch (error) {
     next(error);
   }
