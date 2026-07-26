@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   createJobHandler,
   deleteJobHandler,
+  generateProposalDraftHandler,
   getClientJobsHandler,
   getClientStatsHandler,
   getFreelancerProposalsHandler,
@@ -50,5 +51,6 @@ router.delete("/:jobId/save", authorized, unsaveJobHandler);
 // ─── Proposals on a specific job ──────────────────────────────────────────────
 router.get("/:jobId/proposals", authorized, getJobProposalsHandler);
 router.post("/:jobId/proposals", authorized, submitProposalHandler);
+router.post("/:jobId/generate-proposal", authorized, generateProposalDraftHandler);
 
 export default router;
