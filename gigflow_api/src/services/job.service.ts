@@ -96,7 +96,7 @@ if (query.search) {
 
   const [jobs, total] = await Promise.all([
     JobModel.find(filter)
-      .populate("client", "firstName lastName")
+      .populate("client", "firstName lastName profilePicture")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),
@@ -113,7 +113,7 @@ if (query.search) {
 };
 
 export const getJobById = async (jobId: string, requesterId?: string | null) => {
-  const job = await JobModel.findById(jobId).populate("client", "firstName lastName");
+  const job = await JobModel.findById(jobId).populate("client", "firstName lastName profilePicture");
   if (!job) {
     throw new HttpError(404, "Job not found", { code: ErrorCodes.NOT_FOUND });
   }
@@ -412,7 +412,7 @@ export const getSavedJobs = async (freelancerId: string) => {
       path: "job",
       populate: {
         path: "client",
-        select: "firstName lastName",
+        select: "firstName lastName profilePicture",
       },
     })
     .sort({ createdAt: -1 });
@@ -427,7 +427,7 @@ export const getSavedJobs = async (freelancerId: string) => {
 // ─── Serializers ──────────────────────────────────────────────────────────────
 const serializeJob = (job: IJobDocument, requesterId: string | null) => {
   const clientDoc = job.populated("client")
-    ? (job.client as unknown as { firstName: string; lastName: string; _id: string })
+    ? (job.client as unknown as { firstName: string; lastName: string; profilePicture?: string; _id: string })
     : null;
 
   return {
@@ -449,8 +449,9 @@ const serializeJob = (job: IJobDocument, requesterId: string | null) => {
           id: clientDoc._id,
           name: `${clientDoc.firstName} ${clientDoc.lastName}`,
           initials: `${clientDoc.firstName[0]}${clientDoc.lastName[0]}`.toUpperCase(),
+          profilePicture: clientDoc.profilePicture ?? undefined,
         }
-      : { id: requesterId ?? "", name: "", initials: "" },
+      : { id: requesterId ?? "", name: "", initials: "", profilePicture: undefined },
     postedAt: timeAgo(job.createdAt),
     createdAt: job.createdAt.toISOString(),
   };

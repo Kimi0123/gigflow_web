@@ -13,6 +13,7 @@ import {
 } from "../../lib/api/jobApi";
 import { type Contract, contractApi } from "../../lib/api/contractApi";
 import { reviewApi } from "../../lib/api/reviewApi";
+import { resolveAssetUrl } from "../../lib/api/authApi";
 import { UserRatingDisplay } from "../ui/UserRatingDisplay";
 import { LeaveReviewModal } from "./LeaveReviewModal";
 import DashboardHeader from "./DashboardHeader";
@@ -698,10 +699,18 @@ function JobCard({
       highlighted ? "border-[#38bdf8] shadow-[0_0_0_1px_rgba(56,189,248,0.15)]" : "border-[#e9eef5]"
     }`}>
       <div className="flex gap-4">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[12px] font-black text-white"
-          style={{ background: avatarColor }}>
-          {job.client.initials || "GF"}
-        </div>
+        {job.client.profilePicture ? (
+          <img
+            src={resolveAssetUrl(job.client.profilePicture)}
+            alt={job.client.name || "Client"}
+            className="h-10 w-10 shrink-0 rounded-xl object-cover"
+          />
+        ) : (
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[12px] font-black text-white"
+            style={{ background: avatarColor }}>
+            {job.client.initials || "GF"}
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 text-[12px]">
             <span className="font-bold text-[#374151]">{job.client.name || "GigFlow Client"}</span>
@@ -922,12 +931,20 @@ function JobDetailsModal({
         {/* Header */}
         <div className="flex items-start justify-between border-b border-[#e9eef5] px-7 py-5">
           <div className="flex items-center gap-3 min-w-0 pr-4">
-            <div
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[12px] font-black text-white"
-              style={{ background: avatarColor }}
-            >
-              {job.client.initials || "GF"}
-            </div>
+            {job.client.profilePicture ? (
+              <img
+                src={resolveAssetUrl(job.client.profilePicture)}
+                alt={job.client.name || "Client"}
+                className="h-10 w-10 shrink-0 rounded-xl object-cover"
+              />
+            ) : (
+              <div
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[12px] font-black text-white"
+                style={{ background: avatarColor }}
+              >
+                {job.client.initials || "GF"}
+              </div>
+            )}
             <div className="min-w-0">
               <h2 className="text-[18px] font-black text-[#111d31] leading-snug">{job.title}</h2>
               <p className="text-[12px] text-[#70829d]">
@@ -1102,9 +1119,17 @@ function ApplyModal({
           </button>
         </div>
         <div className="flex items-center gap-3 border-b border-[#e9eef5] bg-[#f7f8fa] px-7 py-3.5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[11px] font-black text-white" style={{ background: avatarColor }}>
-            {job.client.initials || "GF"}
-          </div>
+          {job.client.profilePicture ? (
+            <img
+              src={resolveAssetUrl(job.client.profilePicture)}
+              alt={job.client.name || "Client"}
+              className="h-9 w-9 shrink-0 rounded-xl object-cover"
+            />
+          ) : (
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[11px] font-black text-white" style={{ background: avatarColor }}>
+              {job.client.initials || "GF"}
+            </div>
+          )}
           <div>
             <p className="text-[13px] font-bold text-[#111d31]">{job.client.name || "GigFlow Client"}</p>
             <p className="text-[12px] text-[#70829d]">{job.budget} · {job.budgetType}</p>

@@ -8,11 +8,14 @@ import { useAuth } from "../../providers/AuthContext";
 import { useSocket } from "../../providers/SocketContext";
 import { messageApi } from "../../lib/api/messageApi";
 
+import { resolveAssetUrl } from "../../lib/api/authApi";
+
 interface DashboardHeaderProps {
   searchPlaceholder?: string;
   navItems?: { label: string; href: string; active?: boolean }[];
   onNavClick?: (label: string) => void;
   activeNav?: string;
+  onPostJob?: () => void;
 }
 
 export default function DashboardHeader({
@@ -20,6 +23,7 @@ export default function DashboardHeader({
   navItems = [],
   onNavClick,
   activeNav,
+  onPostJob,
 }: DashboardHeaderProps) {
   const router = useRouter();
   const { user, token, logout } = useAuth();
@@ -66,6 +70,11 @@ export default function DashboardHeader({
 
   const isClient = user?.role === "client";
   const isFreelancer = user?.role === "freelancer";
+  const dashboardHref = isClient
+    ? "/dashboard/client"
+    : isFreelancer
+    ? "/dashboard/freelancer"
+    : "/";
 
   return (
     <header className="sticky top-0 z-30 border-b border-[#e9eef5] bg-white/95 backdrop-blur">
@@ -73,7 +82,7 @@ export default function DashboardHeader({
       <div className="flex h-[58px] items-center gap-3 px-4 sm:px-7">
         {/* Logo */}
         <Link
-          href="/"
+          href={dashboardHref}
           className="flex shrink-0 items-center gap-2 transition-opacity hover:opacity-80"
         >
           <Image src="/assets/logo.svg" alt="GigFlow" width={38} height={38} />
@@ -94,15 +103,25 @@ export default function DashboardHeader({
         {/* Right side */}
         <div className="ml-auto flex items-center gap-3">
           {/* Role-specific CTA */}
-          {isClient && (
-            <Link
-              href="/dashboard/client"
-              className="hidden items-center gap-1.5 rounded-lg bg-[#38bdf8] px-4 py-2 text-[12px] font-bold uppercase tracking-[0.12em] text-white transition hover:bg-[#0ea5e9] sm:flex"
-            >
-              <PlusIcon className="h-3.5 w-3.5" />
-              Post a Job
-            </Link>
-          )}
+          {isClient &&
+            (onPostJob ? (
+              <button
+                type="button"
+                onClick={onPostJob}
+                className="hidden items-center gap-1.5 rounded-lg bg-[#38bdf8] px-4 py-2 text-[12px] font-bold uppercase tracking-[0.12em] text-white transition hover:bg-[#0ea5e9] sm:flex"
+              >
+                <PlusIcon className="h-3.5 w-3.5" />
+                Post a Job
+              </button>
+            ) : (
+              <Link
+                href="/dashboard/client"
+                className="hidden items-center gap-1.5 rounded-lg bg-[#38bdf8] px-4 py-2 text-[12px] font-bold uppercase tracking-[0.12em] text-white transition hover:bg-[#0ea5e9] sm:flex"
+              >
+                <PlusIcon className="h-3.5 w-3.5" />
+                Post a Job
+              </Link>
+            ))}
           {isFreelancer && (
             <Link
               href="/dashboard/freelancer"
@@ -162,9 +181,17 @@ export default function DashboardHeader({
               onClick={() => setDropdownOpen((v) => !v)}
               className="flex items-center gap-2.5 rounded-xl border border-[#dce5ef] bg-[#f4fbff] px-2.5 py-1.5 transition hover:border-[#38bdf8] hover:bg-white"
             >
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#38bdf8] text-[11px] font-extrabold text-white">
-                {initials}
-              </span>
+              {user?.profilePicture ? (
+                <img
+                  src={resolveAssetUrl(user.profilePicture)}
+                  alt={fullName || "User Avatar"}
+                  className="h-8 w-8 rounded-lg object-cover"
+                />
+              ) : (
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#38bdf8] text-[11px] font-extrabold text-white">
+                  {initials}
+                </span>
+              )}
               <span className="hidden min-w-0 lg:block">
                 <span className="block max-w-[110px] truncate text-[13px] font-extrabold text-[#111d31]">
                   {fullName || "Account"}
