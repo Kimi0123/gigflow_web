@@ -4,6 +4,7 @@ import {
   createJob,
   deleteJob,
   getClientJobs,
+  getClientProposals,
   getClientStats,
   getFreelancerProposals,
   getFreelancerStats,
@@ -171,6 +172,19 @@ export const getJobProposalsHandler = async (
 ) => {
   try {
     const proposals = await getJobProposals(req.userId!, req.params.jobId as string);
+    sendSuccess(res, 200, "Proposals fetched successfully", proposals);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getClientProposalsHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const proposals = await getClientProposals(req.userId!);
     sendSuccess(res, 200, "Proposals fetched successfully", proposals);
   } catch (error) {
     next(error);

@@ -4,6 +4,7 @@ import {
   deleteJobHandler,
   generateProposalDraftHandler,
   getClientJobsHandler,
+  getClientProposalsHandler,
   getClientStatsHandler,
   getFreelancerProposalsHandler,
   getFreelancerStatsHandler,
@@ -27,6 +28,7 @@ const router = Router();
 // ─── Client: static routes ────────────────────────────────────────────────────
 router.get("/client/my-jobs", authorized, getClientJobsHandler);
 router.get("/client/stats", authorized, getClientStatsHandler);
+router.get("/proposals/client/all-proposals", authorized, getClientProposalsHandler);
 
 // ─── Freelancer: proposal & saved jobs static routes ──────────────────────────
 router.get("/proposals/my-proposals", authorized, getFreelancerProposalsHandler);

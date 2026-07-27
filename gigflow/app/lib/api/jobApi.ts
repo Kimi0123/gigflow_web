@@ -187,6 +187,10 @@ export const jobApi = {
   updateProposalStatus: (token: string, proposalId: string, status: "accepted" | "rejected") =>
     patch<Proposal>(`/jobs/proposals/${proposalId}/status`, { status }, token),
 
+  // Client: view all proposals across all owned jobs
+  clientAllProposals: (token: string) =>
+    get<Proposal[]>("/jobs/proposals/client/all-proposals", token),
+
   // Freelancer: save a job
   save: (token: string, jobId: string) =>
     post<{ jobId: string; saved: boolean }>(`/jobs/${jobId}/save`, {}, token),
