@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../../providers/AuthContext";
+import { resolveAssetUrl } from "../../lib/api/authApi";
 import {
   type ClientStats,
   type Job,
@@ -83,10 +84,15 @@ export default function ClientDashboard() {
   const { user, token } = useAuth();
   const [activeNav, setActiveNav] = useState("Overview");
   const [statusFilter, setStatusFilter] = useState<"all" | JobStatus>("all");
+  const [proposalFilter, setProposalFilter] = useState<
+    "all" | "pending" | "accepted" | "rejected"
+  >("all");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [stats, setStats] = useState<ClientStats | null>(null);
+  const [clientProposals, setClientProposals] = useState<Proposal[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [loadingProposals, setLoadingProposals] = useState(false);
   const [showPostModal, setShowPostModal] = useState(false);
   const [toast, setToast] = useState<{
     type: "success" | "error";
@@ -128,6 +134,19 @@ export default function ClientDashboard() {
     }
   }, [token]);
 
+  const fetchClientProposals = useCallback(async () => {
+    if (!token) return;
+    setLoadingProposals(true);
+    try {
+      const data = await jobApi.clientAllProposals(token);
+      setClientProposals(data);
+    } catch {
+      showToast("error", "Failed to load proposals.");
+    } finally {
+      setLoadingProposals(false);
+    }
+  }, [token]);
+
   useEffect(() => {
     fetchJobs();
     fetchStats();
@@ -148,9 +167,12 @@ export default function ClientDashboard() {
   }, [token]);
 
   useEffect(() => {
-    if (activeNav === "Active Contracts" || activeNav === "Messages")
+    if (activeNav === "Active Contracts" || activeNav === "Messages") {
       fetchContracts();
-  }, [activeNav, fetchContracts]);
+    } else if (activeNav === "Overview" || activeNav === "Proposals") {
+      fetchClientProposals();
+    }
+  }, [activeNav, fetchContracts, fetchClientProposals]);
 
   const handlePostJob = async (payload: PostJobPayload) => {
     if (!token) return;
@@ -237,10 +259,42 @@ export default function ClientDashboard() {
     }
   };
 
+  const handleAcceptRejectGlobal = async (
+    proposalId: string,
+    action: "accepted" | "rejected"
+  ) => {
+    if (!token) return;
+    try {
+      const updated = await jobApi.updateProposalStatus(
+        token,
+        proposalId,
+        action
+      );
+      setClientProposals((prev) =>
+        prev.map((p) => (p.id === proposalId ? updated : p))
+      );
+      if (action === "accepted") {
+        fetchJobs();
+        fetchStats();
+      }
+      showToast(
+        "success",
+        action === "accepted" ? "Freelancer hired!" : "Proposal rejected."
+      );
+    } catch {
+      showToast("error", "Failed to update proposal.");
+    }
+  };
+
   const filteredJobs =
     statusFilter === "all"
       ? jobs
       : jobs.filter((j) => j.status === statusFilter);
+
+  const filteredProposals =
+    proposalFilter === "all"
+      ? clientProposals
+      : clientProposals.filter((p) => p.status === proposalFilter);
 
   const statCards = [
     {
@@ -288,7 +342,7 @@ export default function ClientDashboard() {
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-[26px] font-black tracking-tight text-[#111d31]">
-              Welcome back, {firstName} 👋
+              Welcome back, {firstName} 
             </h1>
             <div className="flex flex-wrap items-center gap-3 mt-1">
               <p className="text-[14px] text-[#6b7280]">
@@ -336,38 +390,142 @@ export default function ClientDashboard() {
           </div>
         )}
 
-        {/* Stats */}
-        <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {statCards.map((stat) => (
-            <div
-              key={stat.label}
-              className="flex items-center gap-4 rounded-xl border border-[#e9eef5] bg-white p-5 shadow-sm"
-            >
-              <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-                style={{ background: stat.bg }}
-              >
-                <StatIcon name={stat.icon} color={stat.color} />
+        {/* ── Overview Tab ── */}
+        {activeNav === "Overview" && (
+          <div className="space-y-8">
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {statCards.map((stat) => (
+                <div
+                  key={stat.label}
+                  className="flex items-center gap-4 rounded-xl border border-[#e9eef5] bg-white p-5 shadow-sm"
+                >
+                  <div
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+                    style={{ background: stat.bg }}
+                  >
+                    <StatIcon name={stat.icon} color={stat.color} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[22px] font-black leading-none text-[#111d31]">
+                      {loadingStats ? (
+                        <span className="inline-block h-5 w-10 animate-pulse rounded bg-[#e9eef5]" />
+                      ) : (
+                        stat.value
+                      )}
+                    </p>
+                    <p className="mt-1 truncate text-[11px] font-semibold text-[#70829d]">
+                      {stat.label}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Quick-glance Grid */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {/* Recent Jobs */}
+              <div className="rounded-2xl border border-[#e9eef5] bg-white p-6 shadow-sm">
+                <div className="mb-4 flex items-center justify-between border-b border-[#e9eef5] pb-4">
+                  <h2 className="text-[17px] font-extrabold text-[#111d31]">
+                    Recent Jobs
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setActiveNav("My Jobs")}
+                    className="text-[12px] font-bold text-[#38bdf8] hover:underline"
+                  >
+                    View All Jobs →
+                  </button>
+                </div>
+                {loadingJobs ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-12 w-full animate-pulse rounded-lg bg-[#f1f5f9]" />
+                    ))}
+                  </div>
+                ) : jobs.length === 0 ? (
+                  <p className="py-8 text-center text-[13px] text-[#94a3b8]">No jobs posted yet.</p>
+                ) : (
+                  <div className="divide-y divide-[#f1f5f9]">
+                    {jobs.slice(0, 4).map((j) => (
+                      <div key={j.id} className="flex items-center justify-between py-3.5 first:pt-0 last:pb-0">
+                        <div className="min-w-0 pr-4">
+                          <p className="text-[14px] font-bold text-[#111d31] truncate">{j.title}</p>
+                          <p className="text-[11px] text-[#70829d]">{j.category} · {j.budget}</p>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] border border-[#dce5ef] bg-[#f8fafc] text-[#374151]">
+                            {j.status}
+                          </span>
+                          <span className="text-[11px] font-semibold text-[#70829d]">
+                            {j.proposalCount} proposal{j.proposalCount !== 1 ? "s" : ""}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="min-w-0">
-                <p className="text-[22px] font-black leading-none text-[#111d31]">
-                  {loadingStats ? (
-                    <span className="inline-block h-5 w-10 animate-pulse rounded bg-[#e9eef5]" />
-                  ) : (
-                    stat.value
-                  )}
-                </p>
-                <p className="mt-1 truncate text-[11px] font-semibold text-[#70829d]">
-                  {stat.label}
-                </p>
+
+              {/* Recent Proposals */}
+              <div className="rounded-2xl border border-[#e9eef5] bg-white p-6 shadow-sm">
+                <div className="mb-4 flex items-center justify-between border-b border-[#e9eef5] pb-4">
+                  <h2 className="text-[17px] font-extrabold text-[#111d31]">
+                    Recent Proposals
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setActiveNav("Proposals")}
+                    className="text-[12px] font-bold text-[#38bdf8] hover:underline"
+                  >
+                    View All Proposals →
+                  </button>
+                </div>
+                {loadingProposals ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-12 w-full animate-pulse rounded-lg bg-[#f1f5f9]" />
+                    ))}
+                  </div>
+                ) : clientProposals.length === 0 ? (
+                  <p className="py-8 text-center text-[13px] text-[#94a3b8]">No proposals received yet.</p>
+                ) : (
+                  <div className="divide-y divide-[#f1f5f9]">
+                    {clientProposals.slice(0, 4).map((p) => (
+                      <div key={p.id} className="flex items-center justify-between py-3.5 first:pt-0 last:pb-0">
+                        <div className="flex items-center gap-3 min-w-0 pr-4">
+                          {p.freelancer?.profilePicture ? (
+                            <img
+                              src={resolveAssetUrl(p.freelancer.profilePicture)}
+                              alt={p.freelancer.name}
+                              className="h-8 w-8 rounded-lg object-cover shrink-0"
+                            />
+                          ) : (
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#38bdf8] text-[11px] font-black text-white">
+                              {p.freelancer?.initials || "??"}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-[13px] font-bold text-[#111d31] truncate">{p.freelancer?.name || "Freelancer"}</p>
+                            <p className="text-[11px] text-[#70829d] truncate">Job: {p.jobTitle}</p>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-[13px] font-bold text-[#111d31]">Rs. {p.bidAmount.toLocaleString()}</p>
+                          <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#6b7280]">{p.status}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
 
-        {/* Jobs section */}
-        {/* ── Jobs section (only when on Overview / My Jobs / Proposals tabs) ── */}
-        {activeNav !== "Active Contracts" && activeNav !== "Messages" && (
+        {/* ── My Jobs Tab ── */}
+        {activeNav === "My Jobs" && (
           <div className="rounded-2xl border border-[#e9eef5] bg-white shadow-sm">
             <div className="flex flex-col gap-4 border-b border-[#e9eef5] p-5 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -437,6 +595,63 @@ export default function ClientDashboard() {
                     onDelete={() => handleDeleteJob(job.id)}
                     onStatusChange={(s) => handleStatusChange(job.id, s)}
                     onToast={showToast}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Proposals Tab ── */}
+        {activeNav === "Proposals" && (
+          <div className="rounded-2xl border border-[#e9eef5] bg-white shadow-sm">
+            <div className="flex flex-col gap-4 border-b border-[#e9eef5] p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-[17px] font-extrabold text-[#111d31]">
+                  All Proposals
+                </h2>
+                <p className="text-[12px] text-[#70829d]">
+                  {filteredProposals.length} proposal
+                  {filteredProposals.length !== 1 ? "s" : ""} across all your jobs
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(["all", "pending", "accepted", "rejected"] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setProposalFilter(s)}
+                    className={`rounded-lg px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] transition ${
+                      proposalFilter === s
+                        ? "bg-[#38bdf8] text-white"
+                        : "border border-[#e5e9ef] bg-white text-[#6b7280] hover:border-[#38bdf8] hover:text-[#38bdf8]"
+                    }`}
+                  >
+                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {loadingProposals ? (
+              <div className="p-5 space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-16 w-full animate-pulse rounded-lg bg-[#f1f5f9]" />
+                ))}
+              </div>
+            ) : filteredProposals.length === 0 ? (
+              <div className="py-16 text-center text-[14px] text-[#94a3b8]">
+                No proposals found for the selected filter.
+              </div>
+            ) : (
+              <div className="divide-y divide-[#e9eef5]">
+                {filteredProposals.map((p) => (
+                  <ProposalRow
+                    key={p.id}
+                    proposal={p}
+                    token={token!}
+                    onAccept={() => handleAcceptRejectGlobal(p.id, "accepted")}
+                    onReject={() => handleAcceptRejectGlobal(p.id, "rejected")}
                   />
                 ))}
               </div>
@@ -742,14 +957,23 @@ function ProposalRow({
   const sc = statusConfig[proposal.status] ?? statusConfig.pending;
   const fl = proposal.freelancer;
   const initials = fl?.initials ?? "??";
+  const avatarUrl = fl?.profilePicture ? resolveAssetUrl(fl.profilePicture) : null;
 
   return (
     <div className="px-4 py-3">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#38bdf8] text-[11px] font-black text-white">
-            {initials}
-          </div>
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt={fl?.name ?? "Freelancer"}
+              className="h-9 w-9 shrink-0 rounded-lg object-cover"
+            />
+          ) : (
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#38bdf8] text-[11px] font-black text-white">
+              {initials}
+            </div>
+          )}
           <div className="min-w-0">
             <p className="text-[13px] font-bold text-[#111d31] truncate flex items-center gap-2">
               {fl?.id ? (
@@ -765,6 +989,11 @@ function ProposalRow({
               {fl?.id && <UserRatingDisplay token={token} userId={fl.id} />}
             </p>
             <p className="text-[11px] text-[#70829d]">{fl?.email}</p>
+            {proposal.jobTitle && (
+              <p className="text-[10px] text-[#38bdf8] font-semibold truncate">
+                Job: {proposal.jobTitle}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">

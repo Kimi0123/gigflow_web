@@ -260,7 +260,7 @@ export default function FreelancerDashboard() {
           <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-[26px] font-black tracking-tight text-[#111d31]">
-                Good day, {firstName} 👋
+                Good day, {firstName} 
               </h1>
               <div className="flex flex-wrap items-center gap-3 mt-1">
                 <p className="text-[14px] text-[#6b7280]">

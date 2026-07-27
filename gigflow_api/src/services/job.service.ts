@@ -285,6 +285,21 @@ export const getJobProposals = async (clientId: string, jobId: string) => {
   return proposals.map((p) => serializeProposal(p, job.title, null));
 };
 
+export const getClientProposals = async (clientId: string) => {
+  const clientJobs = await JobModel.find({ client: clientId }).select("_id");
+  const jobIds = clientJobs.map((j) => j._id);
+
+  const proposals = await ProposalModel.find({ job: { $in: jobIds } })
+    .populate("freelancer", "firstName lastName email profilePicture")
+    .populate("job", "title budgetMin budgetMax budgetType")
+    .sort({ createdAt: -1 });
+
+  return proposals.map((p) => {
+    const job = p.job as unknown as IJobDocument & { title: string };
+    return serializeProposal(p, job?.title ?? "Unknown Job", job);
+  });
+};
+
 export const updateProposalStatus = async (
   clientId: string,
   proposalId: string,
@@ -472,10 +487,14 @@ const serializeProposal = (
       })
     : null;
 
+  const jobId = (proposal.job as any)?._id
+    ? (proposal.job as any)._id.toString()
+    : proposal.job.toString();
+
   return {
     _id: proposal._id.toString(),
     id: proposal._id.toString(),
-    jobId: proposal.job.toString(),
+    jobId,
     jobTitle,
     bidAmount: proposal.bidAmount,
     coverLetter: proposal.coverLetter,
