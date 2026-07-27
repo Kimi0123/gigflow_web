@@ -73,7 +73,7 @@ export interface Job {
   duration: string;
   status: JobStatus;
   proposalCount: number;
-  client: { id: string; name: string; initials: string };
+  client: { id: string; name: string; initials: string; profilePicture?: string };
   postedAt: string;
   createdAt: string;
 }
