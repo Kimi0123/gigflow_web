@@ -18,6 +18,7 @@ import { UserRatingDisplay } from "../ui/UserRatingDisplay";
 import { LeaveReviewModal } from "./LeaveReviewModal";
 import DashboardHeader from "./DashboardHeader";
 import MessagesTab from "./MessagesTab";
+import WalletPanel from "./WalletPanel";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const categoryTabs = ["All", "Development", "Design", "Writing", "Marketing", "AI Services"];
@@ -29,6 +30,7 @@ const navItems = [
   { label: "Saved Jobs", href: "#" },
   { label: "My Contracts", href: "#" },
   { label: "Messages", href: "#" },
+  { label: "Wallet", href: "#" },
 ];
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -485,6 +487,11 @@ export default function FreelancerDashboard() {
             onToast={showToast}
           />
         )}
+
+        {/* Wallet */}
+        {activeNav === "Wallet" && (
+          <WalletPanel token={token} />
+        )}
       </div>
 
       {/* Job Details Modal */}
@@ -600,7 +607,7 @@ function ContractsTab({
             return (
               <div key={contract.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex-1">
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-[16px] font-bold text-[#111d31]">{contract.jobTitle}</h3>
                     <span
                       className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
@@ -613,6 +620,18 @@ function ContractsTab({
                     >
                       {contract.status}
                     </span>
+                    {/* Funded / Awaiting Funding badge — read-only for freelancers */}
+                    {contract.status === "active" && (
+                      contract.isFunded ? (
+                        <span className="rounded-full bg-[#dcfce7] px-2.5 py-0.5 text-[10px] font-bold text-[#166534]">
+                          Funded ✓
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-[#fef3c7] px-2.5 py-0.5 text-[10px] font-bold text-[#92400e]">
+                          Awaiting Funding
+                        </span>
+                      )
+                    )}
                   </div>
 
                   <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] font-medium text-[#6b7280]">

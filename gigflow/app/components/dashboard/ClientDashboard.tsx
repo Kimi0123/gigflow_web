@@ -15,11 +15,13 @@ import {
   jobApi,
 } from "../../lib/api/jobApi";
 import { type Contract, contractApi } from "../../lib/api/contractApi";
+import { paymentApi } from "../../lib/api/paymentApi";
 import { reviewApi } from "../../lib/api/reviewApi";
 import { UserRatingDisplay } from "../ui/UserRatingDisplay";
 import { LeaveReviewModal } from "./LeaveReviewModal";
 import DashboardHeader from "./DashboardHeader";
 import MessagesTab from "./MessagesTab";
+import WalletPanel from "./WalletPanel";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const categoryOptions = [
@@ -64,6 +66,7 @@ const navItems = [
   { label: "Proposals", href: "#" },
   { label: "Active Contracts", href: "#" },
   { label: "Messages", href: "#" },
+  { label: "Wallet", href: "#" },
   { label: "Find Freelancers", href: "/freelancers" },
 ];
 
@@ -254,8 +257,8 @@ export default function ClientDashboard() {
         prev.map((c) => (c.id === contractId ? updated : c)),
       );
       showToast("success", "Contract marked complete! The job is now closed.");
-    } catch {
-      showToast("error", "Failed to complete contract.");
+    } catch (err: any) {
+      showToast("error", err?.message || "Failed to complete contract.");
     }
   };
 
@@ -682,6 +685,11 @@ export default function ClientDashboard() {
             userId={user?.id || user?._id}
             onToast={showToast}
           />
+        )}
+
+        {/* ── Wallet tab ── */}
+        {activeNav === "Wallet" && (
+          <WalletPanel token={token} />
         )}
       </div>
 
@@ -1485,6 +1493,10 @@ function ContractsTab({
   const [reviewingContract, setReviewingContract] = useState<Contract | null>(
     null,
   );
+  // Track per-contract funding in progress
+  const [fundingIds, setFundingIds] = useState<Set<string>>(new Set());
+  // Local isFunded overrides so UI updates immediately on success
+  const [localFunded, setLocalFunded] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!token || !userId) return;
@@ -1525,6 +1537,27 @@ function ContractsTab({
     onToast("success", "Review submitted successfully!");
   };
 
+  const handleFundContract = async (contractId: string) => {
+    if (!token) return;
+    setFundingIds((prev) => new Set(prev).add(contractId));
+    try {
+      await paymentApi.fundContract(token, contractId);
+      setLocalFunded((prev) => ({ ...prev, [contractId]: true }));
+      onToast(
+        "success",
+        "Contract funded! You can now mark it complete once work is done.",
+      );
+    } catch (err: any) {
+      onToast("error", err?.message || "Failed to fund contract.");
+    } finally {
+      setFundingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(contractId);
+        return next;
+      });
+    }
+  };
+
   return (
     <div className="rounded-2xl border border-[#e9eef5] bg-white shadow-sm">
       <div className="flex flex-col gap-4 border-b border-[#e9eef5] p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -1562,13 +1595,15 @@ function ContractsTab({
         <div className="divide-y divide-[#f1f5f9]">
           {contracts.map((contract) => {
             const isReviewed = reviewedContractIds.includes(contract.id);
+            const isFunded = localFunded[contract.id] ?? contract.isFunded;
+            const isFunding = fundingIds.has(contract.id);
             return (
               <div
                 key={contract.id}
                 className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between"
               >
                 <div className="flex-1">
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-[16px] font-bold text-[#111d31]">
                       {contract.jobTitle}
                     </h3>
@@ -1583,6 +1618,18 @@ function ContractsTab({
                     >
                       {contract.status}
                     </span>
+                    {/* Funded / Awaiting Funding badge */}
+                    {contract.status === "active" && (
+                      isFunded ? (
+                        <span className="rounded-full bg-[#dcfce7] px-2.5 py-0.5 text-[10px] font-bold text-[#166534]">
+                          Funded ✓
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-[#fef3c7] px-2.5 py-0.5 text-[10px] font-bold text-[#92400e]">
+                          Awaiting Funding
+                        </span>
+                      )
+                    )}
                   </div>
 
                   <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] font-medium text-[#6b7280]">
@@ -1608,7 +1655,24 @@ function ContractsTab({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {contract.status === "active" && (
+                  {contract.status === "active" && !isFunded && (
+                    <button
+                      type="button"
+                      disabled={isFunding}
+                      onClick={() => handleFundContract(contract.id)}
+                      className="flex items-center gap-1.5 rounded-lg bg-[#38bdf8] px-4 py-2 text-[12px] font-bold text-white shadow-sm transition hover:bg-[#0ea5e9] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isFunding ? (
+                        <>
+                          <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                          Funding…
+                        </>
+                      ) : (
+                        <>Fund This Contract</>
+                      )}
+                    </button>
+                  )}
+                  {contract.status === "active" && isFunded && (
                     <button
                       type="button"
                       onClick={() => onComplete(contract.id)}

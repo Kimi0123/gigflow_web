@@ -122,6 +122,11 @@ describe("Contracts Integration Tests", () => {
     });
 
     it("should allow client to complete contract, set completedAt, and close job status", async () => {
+      // Fund the contract first (required since completion rejects unfunded contracts)
+      await request(app)
+        .post(`/api/v1/payments/contracts/${contractId}/fund`)
+        .set("Authorization", `Bearer ${clientToken}`);
+
       const res = await request(app)
         .patch(`/api/v1/contracts/${contractId}/complete`)
         .set("Authorization", `Bearer ${clientToken}`);
@@ -140,6 +145,11 @@ describe("Contracts Integration Tests", () => {
     });
 
     it("should reject completing an already-completed contract with 400 Bad Request", async () => {
+      // Fund the contract first
+      await request(app)
+        .post(`/api/v1/payments/contracts/${contractId}/fund`)
+        .set("Authorization", `Bearer ${clientToken}`);
+
       // First completion
       await request(app)
         .patch(`/api/v1/contracts/${contractId}/complete`)
