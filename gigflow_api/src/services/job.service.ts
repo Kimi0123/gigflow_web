@@ -12,6 +12,7 @@ import { IJobDocument, JobModel } from "../models/job.model";
 import { ProposalModel } from "../models/proposal.model";
 import { SavedJobModel } from "../models/savedJob.model";
 import { UserModel } from "../models/user.model";
+import { createNotification } from "./notification.service";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -256,6 +257,13 @@ if (existing) {
   // Increment proposal count on the job
   await JobModel.findByIdAndUpdate(jobId, { $inc: { proposalCount: 1 } });
 
+  await createNotification(
+    job.client.toString(),
+    "proposal_received",
+    `New proposal received for "${job.title}"`,
+    proposal._id.toString()
+  );
+
   return serializeProposal(proposal, job.title, null);
 };
 
@@ -334,7 +342,7 @@ if (proposal.status !== "pending") {
 proposal.status = data.status;
 await proposal.save();
 
-if (data.status === "accepted") {
+  if (data.status === "accepted") {
     // Auto-create a contract between client and the winning freelancer
     await ContractModel.create({
       job: job._id,
@@ -351,6 +359,20 @@ if (data.status === "accepted") {
     await ProposalModel.updateMany(
       { job: job._id, _id: { $ne: proposal._id }, status: "pending" },
       { $set: { status: "rejected" } }
+    );
+
+    await createNotification(
+      proposal.freelancer.toString(),
+      "proposal_accepted",
+      `Your proposal for "${job.title}" was accepted!`,
+      proposal._id.toString()
+    );
+  } else if (data.status === "rejected") {
+    await createNotification(
+      proposal.freelancer.toString(),
+      "proposal_rejected",
+      `Your proposal for "${job.title}" was rejected.`,
+      proposal._id.toString()
     );
   }
 

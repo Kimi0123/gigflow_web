@@ -594,6 +594,10 @@ export default function ClientDashboard() {
                     token={token!}
                     onDelete={() => handleDeleteJob(job.id)}
                     onStatusChange={(s) => handleStatusChange(job.id, s)}
+                    onRefresh={() => {
+                      fetchJobs();
+                      fetchStats();
+                    }}
                     onToast={showToast}
                   />
                 ))}
@@ -697,12 +701,14 @@ function ClientJobCard({
   token,
   onDelete,
   onStatusChange,
+  onRefresh,
   onToast,
 }: {
   job: Job;
   token: string;
   onDelete: () => void;
   onStatusChange: (s: JobStatus) => void;
+  onRefresh?: () => void;
   onToast: (type: "success" | "error", msg: string) => void;
 }) {
   const [showProposals, setShowProposals] = useState(false);
@@ -766,7 +772,9 @@ function ClientJobCard({
       setProposals((prev) =>
         prev.map((p) => (p.id === proposalId ? updated : p)),
       );
-      if (action === "accepted") onStatusChange("in-progress");
+      if (action === "accepted" && onRefresh) {
+        onRefresh();
+      }
       onToast(
         "success",
         action === "accepted" ? "Freelancer hired!" : "Proposal rejected.",

@@ -2,6 +2,7 @@ import { ContractModel, IContractDocument } from "../models/contract.model";
 import { ErrorCodes } from "../errors/error-codes";
 import { HttpError } from "../errors/http-error";
 import { JobModel } from "../models/job.model";
+import { createNotification } from "./notification.service";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const timeAgo = (date: Date): string => {
@@ -134,6 +135,20 @@ export const completeContract = async (clientId: string, contractId: string) => 
 
   // Close the associated job now that the contract is fulfilled
   await JobModel.findByIdAndUpdate(contract.job, { status: "closed" });
+
+  await createNotification(
+    contract.client.toString(),
+    "contract_completed",
+    "Contract marked as complete",
+    contract._id.toString()
+  );
+
+  await createNotification(
+    contract.freelancer.toString(),
+    "contract_completed",
+    "Contract marked as complete",
+    contract._id.toString()
+  );
 
   // Populate for serialization before returning
   const populated = await ContractModel.findById(contractId)

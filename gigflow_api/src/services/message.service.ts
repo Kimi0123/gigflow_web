@@ -4,6 +4,7 @@ import { ErrorCodes } from "../errors/error-codes";
 import { HttpError } from "../errors/http-error";
 import { ContractModel } from "../models/contract.model";
 import { IMessageDocument, MessageModel } from "../models/message.model";
+import { createNotification } from "./notification.service";
 
 export const verifyContractParty = async (userId: string, contractId: string) => {
   if (!contractId) {
@@ -77,6 +78,18 @@ export const sendMessage = async (
   const populated = await MessageModel.findById(message._id).populate(
     "sender",
     "firstName lastName profilePicture"
+  );
+
+  const recipientId =
+    contract.client.toString() === userId
+      ? contract.freelancer.toString()
+      : contract.client.toString();
+
+  await createNotification(
+    recipientId,
+    "new_message",
+    "New message received on your contract",
+    contract._id.toString()
   );
 
   return serializeMessage(populated!);
