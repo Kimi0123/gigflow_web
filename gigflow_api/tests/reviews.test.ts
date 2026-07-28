@@ -106,7 +106,10 @@ describe("Reviews Integration Tests", () => {
     );
     completedContractId = c2.id;
 
-    // Complete contract 2
+    // Fund and complete contract 2
+    await request(app)
+      .post(`/api/v1/payments/contracts/${completedContractId}/fund`)
+      .set("Authorization", `Bearer ${clientToken}`);
     await request(app)
       .patch(`/api/v1/contracts/${completedContractId}/complete`)
       .set("Authorization", `Bearer ${clientToken}`);
@@ -219,6 +222,9 @@ describe("Reviews Integration Tests", () => {
         .set("Authorization", `Bearer ${client2.token}`);
       const c2Id = c2List.body.data[0].id;
       await request(app)
+        .post(`/api/v1/payments/contracts/${c2Id}/fund`)
+        .set("Authorization", `Bearer ${client2.token}`);
+      await request(app)
         .patch(`/api/v1/contracts/${c2Id}/complete`)
         .set("Authorization", `Bearer ${client2.token}`);
       await request(app)
@@ -247,6 +253,9 @@ describe("Reviews Integration Tests", () => {
         .get("/api/v1/contracts/client/my-contracts")
         .set("Authorization", `Bearer ${client3.token}`);
       const c3Id = c3List.body.data[0].id;
+      await request(app)
+        .post(`/api/v1/payments/contracts/${c3Id}/fund`)
+        .set("Authorization", `Bearer ${client3.token}`);
       await request(app)
         .patch(`/api/v1/contracts/${c3Id}/complete`)
         .set("Authorization", `Bearer ${client3.token}`);

@@ -17,6 +17,7 @@ import { IUserDocument, UserModel } from "../models/user.model";
 import { getUserRatingSummary } from "./review.service";
 import { AuthUserResponse, toAuthUserResponse } from "../utils/user.mapper";
 import { sendPasswordResetEmail } from "../utils/mailer";
+import { WalletModel } from "../models/wallet.model";
 
 const SALT_ROUNDS = 10;
 
@@ -66,6 +67,9 @@ export const registerUser = async (
     ...data,
     password: hashedPassword,
   });
+
+  // Create a matching wallet with the default starting balance
+  await WalletModel.create({ user: user._id });
 
   return toAuthUserResponse(user);
 };

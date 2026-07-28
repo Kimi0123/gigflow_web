@@ -3,6 +3,7 @@ import { ErrorCodes } from "../errors/error-codes";
 import { HttpError } from "../errors/http-error";
 import { JobModel } from "../models/job.model";
 import { createNotification } from "./notification.service";
+import { releasePayment } from "./payment.service";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const timeAgo = (date: Date): string => {
@@ -63,6 +64,7 @@ const serializeContract = (contract: IContractDocument) => {
     freelancerProfilePicture: freelancerDoc?.profilePicture,
     agreedAmount: contract.agreedAmount,
     status: contract.status,
+    isFunded: contract.isFunded,
     startedAt: timeAgo(contract.startedAt),
     completedAt: contract.completedAt ? timeAgo(contract.completedAt) : undefined,
     createdAt: contract.createdAt.toISOString(),
@@ -130,6 +132,10 @@ export const completeContract = async (clientId: string, contractId: string) => 
       code: ErrorCodes.BAD_REQUEST,
     });
   }
+
+  // Release escrow payment to freelancer — throws if not funded or already released,
+  // which propagates up through the handler's next(error) without touching the DB.
+  await releasePayment(contractId);
 
   contract.status = "completed";
   contract.completedAt = new Date();

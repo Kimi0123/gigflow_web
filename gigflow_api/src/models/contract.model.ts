@@ -9,6 +9,7 @@ export interface IContract {
   proposal: mongoose.Types.ObjectId;
   agreedAmount: number;
   status: ContractStatus;
+  isFunded: boolean;
   startedAt: Date;
   completedAt?: Date;
 }
@@ -51,6 +52,10 @@ const contractSchema = new Schema<IContractDocument>(
       type: String,
       enum: ["active", "completed", "cancelled"],
       default: "active",
+    },
+    isFunded: {
+      type: Boolean,
+      default: false,
     },
     startedAt: {
       type: Date,

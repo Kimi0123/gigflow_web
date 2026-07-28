@@ -50,3 +50,28 @@ export const getGeminiApiKey = (): string => {
 
   return key;
 };
+
+export interface EsewaConfig {
+  productCode: string;
+  secretKey: string;
+  gatewayUrl: string;
+  statusUrl: string;
+}
+
+export const getEsewaConfig = (): EsewaConfig => {
+  const productCode = process.env.ESEWA_PRODUCT_CODE || "EPAYTEST";
+  const secretKey = process.env.ESEWA_SECRET_KEY || "8gBm/:&EnhH.1/q";
+  const gatewayUrl =
+    process.env.ESEWA_GATEWAY_URL || "https://rc-epay.esewa.com.np";
+  const statusUrl =
+    process.env.ESEWA_STATUS_URL || "https://rc.esewa.com.np";
+
+  if (!productCode) {
+    throw new Error("ESEWA_PRODUCT_CODE is missing in environment variables");
+  }
+  if (!secretKey) {
+    throw new Error("ESEWA_SECRET_KEY is missing in environment variables");
+  }
+
+  return { productCode, secretKey, gatewayUrl, statusUrl };
+};

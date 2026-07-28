@@ -49,6 +49,7 @@ export interface Contract {
   freelancerProfilePicture?: string;
   agreedAmount: number;
   status: ContractStatus;
+  isFunded: boolean;
   startedAt: string;
   completedAt?: string;
   createdAt: string;
