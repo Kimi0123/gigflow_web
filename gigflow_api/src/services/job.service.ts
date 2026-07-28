@@ -287,7 +287,7 @@ export const getJobProposals = async (clientId: string, jobId: string) => {
   }
 
   const proposals = await ProposalModel.find({ job: jobId })
-    .populate("freelancer", "firstName lastName email profilePicture")
+    .populate("freelancer", "firstName lastName email profilePicture cvUrl")
     .sort({ createdAt: -1 });
 
   return proposals.map((p) => serializeProposal(p, job.title, null));
@@ -298,7 +298,7 @@ export const getClientProposals = async (clientId: string) => {
   const jobIds = clientJobs.map((j) => j._id);
 
   const proposals = await ProposalModel.find({ job: { $in: jobIds } })
-    .populate("freelancer", "firstName lastName email profilePicture")
+    .populate("freelancer", "firstName lastName email profilePicture cvUrl")
     .populate("job", "title budgetMin budgetMax budgetType")
     .sort({ createdAt: -1 });
 
@@ -505,6 +505,7 @@ const serializeProposal = (
         lastName: string;
         email: string;
         profilePicture?: string;
+        cvUrl?: string;
         _id: string;
       })
     : null;
@@ -532,6 +533,7 @@ const serializeProposal = (
             initials: `${freelancerDoc.firstName[0]}${freelancerDoc.lastName[0]}`.toUpperCase(),
             email: freelancerDoc.email,
             profilePicture: freelancerDoc.profilePicture,
+            cvUrl: freelancerDoc.cvUrl ?? null,
           },
         }
       : {}),

@@ -735,8 +735,8 @@ function JobCard({
           )}
 
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {job.skills.map((tag) => (
-              <span key={tag} className="rounded-md border border-[#dce5ef] bg-[#f0f8ff] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-[#4b6a8a]">
+            {job.skills.map((tag, index) => (
+              <span key={`${tag}-${index}`} className="rounded-md border border-[#dce5ef] bg-[#f0f8ff] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-[#4b6a8a]">
                 {tag}
               </span>
             ))}
@@ -995,9 +995,9 @@ function JobDetailsModal({
             <div>
               <h3 className="mb-2 text-[12px] font-bold uppercase tracking-[0.14em] text-[#374151]">Required Skills</h3>
               <div className="flex flex-wrap gap-2">
-                {job.skills.map((skill) => (
+                {job.skills.map((skill, index) => (
                   <span
-                    key={skill}
+                    key={`${skill}-${index}`}
                     className="rounded-lg border border-[#dce5ef] bg-[#f0f8ff] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[#4b6a8a]"
                   >
                     {skill}

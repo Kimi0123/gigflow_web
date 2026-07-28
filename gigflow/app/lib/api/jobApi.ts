@@ -96,6 +96,7 @@ export interface Proposal {
     initials: string;
     email: string;
     profilePicture?: string;
+    cvUrl?: string | null;
   };
 }
 
