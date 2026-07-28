@@ -315,7 +315,9 @@ export const updateProposalStatus = async (
 ) => {
   const data = updateProposalStatusDto.parse(input);
 
-  const proposal = await ProposalModel.findById(proposalId).populate("job");
+  const proposal = await ProposalModel.findById(proposalId)
+    .populate("job")
+    .populate("freelancer", "firstName lastName email profilePicture cvUrl");
   if (!proposal) {
     throw new HttpError(404, "Proposal not found", { code: ErrorCodes.NOT_FOUND });
   }
@@ -361,15 +363,23 @@ await proposal.save();
       { $set: { status: "rejected" } }
     );
 
+    const freelancerId = (proposal.freelancer as any)?._id
+      ? (proposal.freelancer as any)._id.toString()
+      : proposal.freelancer.toString();
+
     await createNotification(
-      proposal.freelancer.toString(),
+      freelancerId,
       "proposal_accepted",
       `Your proposal for "${job.title}" was accepted!`,
       proposal._id.toString()
     );
   } else if (data.status === "rejected") {
+    const freelancerId = (proposal.freelancer as any)?._id
+      ? (proposal.freelancer as any)._id.toString()
+      : proposal.freelancer.toString();
+
     await createNotification(
-      proposal.freelancer.toString(),
+      freelancerId,
       "proposal_rejected",
       `Your proposal for "${job.title}" was rejected.`,
       proposal._id.toString()

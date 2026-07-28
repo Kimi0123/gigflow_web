@@ -21,13 +21,18 @@ export const serializeNotification = (doc: INotificationDocument) => ({
 });
 
 export const createNotification = async (
-  recipient: string,
+  recipient: string | any,
   type: NotificationType,
   message: string,
   relatedId?: string
 ) => {
+  const recipientStr =
+    typeof recipient === "object" && recipient !== null
+      ? (recipient._id?.toString() ?? recipient.toString())
+      : String(recipient);
+
   const notification = await NotificationModel.create({
-    recipient: new mongoose.Types.ObjectId(recipient),
+    recipient: new mongoose.Types.ObjectId(recipientStr),
     type,
     message,
     relatedId: relatedId ? new mongoose.Types.ObjectId(relatedId) : null,

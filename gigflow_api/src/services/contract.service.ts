@@ -27,6 +27,7 @@ const serializeContract = (contract: IContractDocument) => {
         _id: string;
         firstName: string;
         lastName: string;
+        profilePicture?: string;
       })
     : null;
 
@@ -51,6 +52,7 @@ const serializeContract = (contract: IContractDocument) => {
     clientInitials: clientDoc
       ? `${clientDoc.firstName[0]}${clientDoc.lastName[0]}`.toUpperCase()
       : "CL",
+    clientProfilePicture: clientDoc?.profilePicture,
     freelancerId: freelancerDoc?._id?.toString() ?? contract.freelancer.toString(),
     freelancerName: freelancerDoc
       ? `${freelancerDoc.firstName} ${freelancerDoc.lastName}`
@@ -81,7 +83,7 @@ export const getClientContracts = async (clientId: string) => {
 export const getFreelancerContracts = async (freelancerId: string) => {
   const contracts = await ContractModel.find({ freelancer: freelancerId })
     .populate("job", "title")
-    .populate("client", "firstName lastName")
+    .populate("client", "firstName lastName profilePicture")
     .sort({ createdAt: -1 });
 
   return contracts.map(serializeContract);
@@ -90,7 +92,7 @@ export const getFreelancerContracts = async (freelancerId: string) => {
 export const getContractById = async (userId: string, contractId: string) => {
   const contract = await ContractModel.findById(contractId)
     .populate("job", "title")
-    .populate("client", "firstName lastName")
+    .populate("client", "firstName lastName profilePicture")
     .populate("freelancer", "firstName lastName profilePicture");
 
   if (!contract) {
@@ -153,7 +155,7 @@ export const completeContract = async (clientId: string, contractId: string) => 
   // Populate for serialization before returning
   const populated = await ContractModel.findById(contractId)
     .populate("job", "title")
-    .populate("client", "firstName lastName")
+    .populate("client", "firstName lastName profilePicture")
     .populate("freelancer", "firstName lastName profilePicture");
 
   return serializeContract(populated!);
