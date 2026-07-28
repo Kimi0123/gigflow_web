@@ -5,6 +5,9 @@
     "outDir": "dist",
     "esModuleInterop": true,
     "strict": false,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "rootDir": ".",
+    "types": ["jest", "node"]
   }
 }
