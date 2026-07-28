@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
+  const [isError, setIsError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const updateForm = <Key extends keyof LoginFormValues>(
@@ -40,9 +41,11 @@ export default function LoginPage() {
     if (!result.ok) {
       setFieldErrors(result.fieldErrors);
       setMessage(result.message);
+      setIsError(true);
       return;
     }
 
+    setIsError(false);
     setSession(result.data.token, result.data.user, form.remember);
     setFieldErrors({});
     setMessage("Login successful. Opening your dashboard...");
@@ -144,9 +147,7 @@ export default function LoginPage() {
           {message && (
             <p
               className={`text-sm font-medium ${
-                Object.keys(fieldErrors).some((key) => fieldErrors[key])
-                  ? "text-red-600"
-                  : "text-emerald-700"
+                isError ? "text-red-600" : "text-emerald-700"
               }`}
             >
               {message}

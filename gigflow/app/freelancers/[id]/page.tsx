@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "../../providers/AuthContext";
@@ -14,6 +14,7 @@ import { reviewApi, type Review } from "../../lib/api/reviewApi";
 
 export default function PublicProfilePage() {
   const params = useParams();
+  const router = useRouter();
   const userId = params?.id as string;
   const { token } = useAuth();
 
@@ -62,7 +63,7 @@ export default function PublicProfilePage() {
         setLoadingReviews(false);
       }
     },
-    [userId, token]
+    [userId, token],
   );
 
   useEffect(() => {
@@ -88,12 +89,13 @@ export default function PublicProfilePage() {
           <p className="mt-2 text-sm text-[#64748b]">
             {profileError || "The requested user profile does not exist."}
           </p>
-          <Link
-            href="/freelancers"
+          <button
+            type="button"
+            onClick={() => router.back()}
             className="mt-6 inline-block rounded-xl bg-[#38bdf8] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#0ea5e9]"
           >
             Back to Directory
-          </Link>
+          </button>
         </div>
       </div>
     );
@@ -112,10 +114,17 @@ export default function PublicProfilePage() {
       {/* Header Bar */}
       <header className="sticky top-0 z-30 border-b border-[#e2e8f0] bg-white px-6 py-4 shadow-sm">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <Link href="/freelancers" className="flex items-center gap-2 text-xs font-bold text-[#64748b] hover:text-[#0f172a]">
-            &larr; Back to Directory
-          </Link>
-          <Link href="/dashboard" className="text-xs font-bold text-[#38bdf8] hover:underline">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-xs font-bold text-[#64748b] hover:text-[#0f172a]"
+          >
+            &larr; Back
+          </button>
+          <Link
+            href="/dashboard"
+            className="text-xs font-bold text-[#38bdf8] hover:underline"
+          >
             Dashboard
           </Link>
         </div>
@@ -142,9 +151,12 @@ export default function PublicProfilePage() {
               )}
 
               <div>
-                <h1 className="text-2xl font-extrabold text-[#0f172a]">{fullName}</h1>
+                <h1 className="text-2xl font-extrabold text-[#0f172a]">
+                  {fullName}
+                </h1>
                 <p className="mt-0.5 text-sm font-semibold text-[#64748b]">
-                  {profile.title || (profile.role === "client" ? "Client" : "Freelancer")}
+                  {profile.title ||
+                    (profile.role === "client" ? "Client" : "Freelancer")}
                 </p>
 
                 <div className="mt-3 flex flex-wrap items-center gap-4 text-xs">
@@ -152,18 +164,24 @@ export default function PublicProfilePage() {
                   <div className="flex items-center gap-1.5">
                     {profile.totalReviews > 0 ? (
                       <>
-                        <svg className="h-4 w-4 fill-[#f59e0b] text-[#f59e0b]" viewBox="0 0 24 24">
+                        <svg
+                          className="h-4 w-4 fill-[#f59e0b] text-[#f59e0b]"
+                          viewBox="0 0 24 24"
+                        >
                           <path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                         </svg>
                         <span className="font-bold text-[#0f172a]">
                           {profile.averageRating.toFixed(1)}
                         </span>
                         <span className="text-[#64748b]">
-                          ({profile.totalReviews} review{profile.totalReviews !== 1 ? "s" : ""})
+                          ({profile.totalReviews} review
+                          {profile.totalReviews !== 1 ? "s" : ""})
                         </span>
                       </>
                     ) : (
-                      <span className="font-medium text-[#94a3b8]">No reviews yet</span>
+                      <span className="font-medium text-[#94a3b8]">
+                        No reviews yet
+                      </span>
                     )}
                   </div>
 
@@ -176,7 +194,8 @@ export default function PublicProfilePage() {
                   <span className="text-[#cbd5e1]">•</span>
 
                   <span className="font-semibold text-[#0f172a]">
-                    {profile.completedContractsCount} contract{profile.completedContractsCount !== 1 ? "s" : ""} completed
+                    {profile.completedContractsCount} contract
+                    {profile.completedContractsCount !== 1 ? "s" : ""} completed
                   </span>
                 </div>
               </div>
@@ -190,8 +209,18 @@ export default function PublicProfilePage() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0f172a] px-5 py-3 text-xs font-bold text-white transition hover:bg-[#334155]"
               >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
                 </svg>
                 Download CV
               </a>
@@ -210,7 +239,9 @@ export default function PublicProfilePage() {
         {/* Skills Card */}
         {profile.skills && profile.skills.length > 0 && (
           <div className="rounded-2xl border border-[#e2e8f0] bg-white p-8 shadow-sm">
-            <h2 className="text-base font-extrabold text-[#0f172a]">Skills & Expertise</h2>
+            <h2 className="text-base font-extrabold text-[#0f172a]">
+              Skills & Expertise
+            </h2>
             <div className="mt-4 flex flex-wrap gap-2">
               {profile.skills.map((skill) => (
                 <span
@@ -235,7 +266,10 @@ export default function PublicProfilePage() {
           {loadingReviews ? (
             <div className="mt-6 space-y-4">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-20 animate-pulse rounded-xl bg-[#f8fafc]" />
+                <div
+                  key={i}
+                  className="h-20 animate-pulse rounded-xl bg-[#f8fafc]"
+                />
               ))}
             </div>
           ) : reviews.length === 0 ? (
@@ -245,7 +279,10 @@ export default function PublicProfilePage() {
           ) : (
             <div className="mt-6 divide-y divide-[#f1f5f9]">
               {reviews.map((review) => (
-                <div key={review.id || review._id} className="py-5 first:pt-0 last:pb-0">
+                <div
+                  key={review.id || review._id}
+                  className="py-5 first:pt-0 last:pb-0"
+                >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
                       {review.reviewerProfilePicture ? (

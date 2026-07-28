@@ -42,6 +42,7 @@ export interface Contract {
   clientId: string;
   clientName: string;
   clientInitials: string;
+  clientProfilePicture?: string;
   freelancerId: string;
   freelancerName: string;
   freelancerInitials: string;
