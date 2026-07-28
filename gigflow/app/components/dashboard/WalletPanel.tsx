@@ -35,6 +35,18 @@ export default function WalletPanel({ token }: { token?: string | null }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Top-up state
+  const [topupAmount, setTopupAmount] = useState("1000");
+  const [topupLoading, setTopupLoading] = useState(false);
+  const [topupError, setTopupError] = useState<string | null>(null);
+  const [topupSuccess, setTopupSuccess] = useState<string | null>(null);
+
+  // Withdraw state
+  const [withdrawAmount, setWithdrawAmount] = useState("1000");
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
+  const [withdrawError, setWithdrawError] = useState<string | null>(null);
+  const [withdrawSuccess, setWithdrawSuccess] = useState<string | null>(null);
+
   useEffect(() => {
     if (!token) return;
     setLoading(true);
@@ -44,6 +56,66 @@ export default function WalletPanel({ token }: { token?: string | null }) {
       .catch((err) => setError(err?.message || "Failed to load wallet."))
       .finally(() => setLoading(false));
   }, [token]);
+
+  const handleTopup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) return;
+    const numAmount = Number(topupAmount);
+    if (!numAmount || numAmount <= 0) {
+      setTopupError("Please enter a valid positive amount.");
+      return;
+    }
+    setTopupLoading(true);
+    setTopupError(null);
+    setTopupSuccess(null);
+    try {
+      const res = await paymentApi.mockTopup(token, numAmount);
+      setWallet((prev) =>
+        prev
+          ? {
+              balance: res.balance,
+              transactions: [res.transaction, ...prev.transactions],
+            }
+          : null
+      );
+      setTopupSuccess(`Successfully added Rs. ${numAmount.toLocaleString()} (Demo).`);
+      setTimeout(() => setTopupSuccess(null), 5000);
+    } catch (err: any) {
+      setTopupError(err?.message || "Failed to add funds.");
+    } finally {
+      setTopupLoading(false);
+    }
+  };
+
+  const handleWithdraw = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) return;
+    const numAmount = Number(withdrawAmount);
+    if (!numAmount || numAmount <= 0) {
+      setWithdrawError("Please enter a valid positive amount.");
+      return;
+    }
+    setWithdrawLoading(true);
+    setWithdrawError(null);
+    setWithdrawSuccess(null);
+    try {
+      const res = await paymentApi.withdraw(token, numAmount);
+      setWallet((prev) =>
+        prev
+          ? {
+              balance: res.balance,
+              transactions: [res.transaction, ...prev.transactions],
+            }
+          : null
+      );
+      setWithdrawSuccess(`Successfully withdrew Rs. ${numAmount.toLocaleString()}.`);
+      setTimeout(() => setWithdrawSuccess(null), 5000);
+    } catch (err: any) {
+      setWithdrawError(err?.message || "Failed to process withdrawal.");
+    } finally {
+      setWithdrawLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -88,8 +160,8 @@ export default function WalletPanel({ token }: { token?: string | null }) {
     <div className="space-y-6">
       {/* Balance Card */}
       <div className="rounded-2xl border border-[#e9eef5] bg-white shadow-sm">
-        <div className="flex items-start justify-between border-b border-[#e9eef5] p-6">
-          <div>
+        <div className="flex flex-col gap-6 border-b border-[#e9eef5] p-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex-1">
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#70829d]">
               Wallet Balance
             </p>
@@ -98,11 +170,120 @@ export default function WalletPanel({ token }: { token?: string | null }) {
               <span>{balance.toLocaleString()}</span>
             </p>
             <p className="mt-2 text-[12px] text-[#94a3b8]">
-              Available for funding contracts
+              Available balance
             </p>
           </div>
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#e0f7ff]">
-            <WalletIcon className="h-6 w-6 text-[#0284c7]" />
+
+          <div className="flex flex-col gap-4 sm:flex-row">
+            {/* Mock Topup Form */}
+            <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-4 sm:w-72">
+              <p className="text-[12px] font-extrabold text-[#1e293b]">
+                Add Funds
+              </p>
+              <form onSubmit={handleTopup} className="mt-3 space-y-3">
+                <div>
+                  <label className="block text-[11px] font-medium text-[#64748b]">
+                    Amount (NPR)
+                  </label>
+                  <input
+                    type="number"
+                    min="10"
+                    step="10"
+                    value={topupAmount}
+                    onChange={(e) => setTopupAmount(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-[#cbd5e1] bg-white px-3 py-2 text-[13px] font-semibold text-[#0f172a] focus:border-[#60bb46] focus:outline-none focus:ring-1 focus:ring-[#60bb46]"
+                    placeholder="Enter amount"
+                    required
+                  />
+                </div>
+
+                {topupError && (
+                  <p className="text-[11px] font-semibold text-[#dc2626]">
+                    {topupError}
+                  </p>
+                )}
+
+                {topupSuccess && (
+                  <p className="text-[11px] font-semibold text-[#16a34a]">
+                    {topupSuccess}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={topupLoading}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#60bb46] px-4 py-2.5 text-[13px] font-extrabold text-white shadow-sm transition hover:bg-[#52a43b] disabled:opacity-60"
+                >
+                  {topupLoading ? (
+                    <>
+                      <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      Processing…
+                    </>
+                  ) : (
+                    <>Add Funds (Demo)</>
+                  )}
+                </button>
+
+                <p className="text-[10px] italic text-[#94a3b8]">
+                  Demo only — no real payment gateway.
+                </p>
+              </form>
+            </div>
+
+            {/* Withdraw Form */}
+            <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-4 sm:w-72">
+              <p className="text-[12px] font-extrabold text-[#1e293b]">
+                Withdraw Funds
+              </p>
+              <form onSubmit={handleWithdraw} className="mt-3 space-y-3">
+                <div>
+                  <label className="block text-[11px] font-medium text-[#64748b]">
+                    Amount (NPR)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-[#cbd5e1] bg-white px-3 py-2 text-[13px] font-semibold text-[#0f172a] focus:border-[#38bdf8] focus:outline-none focus:ring-1 focus:ring-[#38bdf8]"
+                    placeholder="Enter amount"
+                    required
+                  />
+                </div>
+
+                {withdrawError && (
+                  <p className="text-[11px] font-semibold text-[#dc2626]">
+                    {withdrawError}
+                  </p>
+                )}
+
+                {withdrawSuccess && (
+                  <p className="text-[11px] font-semibold text-[#16a34a]">
+                    {withdrawSuccess}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={withdrawLoading}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0284c7] px-4 py-2.5 text-[13px] font-extrabold text-white shadow-sm transition hover:bg-[#0369a1] disabled:opacity-60"
+                >
+                  {withdrawLoading ? (
+                    <>
+                      <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      Processing…
+                    </>
+                  ) : (
+                    <>Withdraw</>
+                  )}
+                </button>
+
+                <p className="text-[10px] italic text-[#94a3b8]">
+                  Demo only — funds are not transferred to a real account.
+                </p>
+              </form>
+            </div>
           </div>
         </div>
 
@@ -110,24 +291,24 @@ export default function WalletPanel({ token }: { token?: string | null }) {
         <div className="flex divide-x divide-[#f1f5f9] px-6 py-4">
           <div className="flex-1 pr-6">
             <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#70829d]">
-              Total Funded
+              Total Outgoing (Funded / Withdrawn)
             </p>
             <p className="mt-1 text-[17px] font-extrabold text-[#dc2626]">
               Rs.{" "}
               {transactions
-                .filter((t) => t.type === "fund")
+                .filter((t) => t.type === "fund" || t.type === "withdraw")
                 .reduce((s, t) => s + t.amount, 0)
                 .toLocaleString()}
             </p>
           </div>
           <div className="flex-1 pl-6">
             <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#70829d]">
-              Total Received
+              Total Incoming (Received / Top-ups)
             </p>
             <p className="mt-1 text-[17px] font-extrabold text-[#16a34a]">
               Rs.{" "}
               {transactions
-                .filter((t) => t.type === "release")
+                .filter((t) => t.type === "release" || t.type === "topup")
                 .reduce((s, t) => s + t.amount, 0)
                 .toLocaleString()}
             </p>
@@ -153,18 +334,22 @@ export default function WalletPanel({ token }: { token?: string | null }) {
               No transactions yet
             </p>
             <p className="mt-1 text-[13px] text-[#70829d]">
-              Fund a contract to see activity here.
+              Fund a contract, top up funds, or withdraw to see activity here.
             </p>
           </div>
         ) : (
           <div className="divide-y divide-[#f1f5f9]">
             {transactions.map((tx) => {
-              const isIncoming = tx.type === "release";
+              const isIncoming = tx.type === "release" || tx.type === "topup";
               const label =
                 tx.type === "fund"
                   ? "Contract Funded"
                   : tx.type === "release"
                   ? "Payment Received"
+                  : tx.type === "topup"
+                  ? "Wallet Top-up (Demo)"
+                  : tx.type === "withdraw"
+                  ? "Withdrawal (Demo)"
                   : "Refund";
               const date = new Date(tx.createdAt).toLocaleDateString("en-US", {
                 year: "numeric",

@@ -32,16 +32,17 @@ const post = <T>(path: string, body: unknown, token: string) =>
   request<T>(path, { method: "POST", body: JSON.stringify(body) }, token);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-export type TransactionType = "fund" | "release" | "refund";
+export type TransactionType = "fund" | "release" | "refund" | "topup" | "withdraw";
 
 export interface Transaction {
   id: string;
   _id: string;
-  contract: string;
+  contract: string | null;
   from: string | null;
   to: string | null;
   amount: number;
   type: TransactionType;
+  status?: string;
   createdAt: string;
 }
 
@@ -60,6 +61,31 @@ export interface FundContractResult {
   walletBalance: number;
 }
 
+export interface EsewaFormFields {
+  amount: number;
+  tax_amount: number;
+  total_amount: number;
+  transaction_uuid: string;
+  product_code: string;
+  product_service_charge: number;
+  product_delivery_charge: number;
+  success_url: string;
+  failure_url: string;
+  signed_field_names: string;
+  signature: string;
+  gatewayUrl: string;
+}
+
+export interface VerifyTopupResult {
+  balance: number;
+  transaction: Transaction;
+}
+
+export interface WithdrawResult {
+  balance: number;
+  transaction: Transaction;
+}
+
 // ─── Payment API ──────────────────────────────────────────────────────────────
 export const paymentApi = {
   getWallet: (token: string) =>
@@ -67,6 +93,24 @@ export const paymentApi = {
 
   fundContract: (token: string, contractId: string) =>
     post<FundContractResult>(`/payments/contracts/${contractId}/fund`, {}, token),
+
+  mockTopup: (token: string, amount: number) =>
+    post<{ balance: number; transaction: Transaction }>("/payments/topup", { amount }, token),
+
+  initiateTopup: (token: string, amount: number) =>
+    post<EsewaFormFields>("/payments/topup/initiate", { amount }, token),
+
+  verifyTopup: async (data: string) => {
+    const res = await fetch(`${apiBase}/payments/topup/verify?data=${encodeURIComponent(data)}`);
+    const body = await res.json();
+    if (!res.ok) {
+      throw new ApiError(body.message || "Verification failed", res.status);
+    }
+    return body.data as VerifyTopupResult;
+  },
+
+  withdraw: (token: string, amount: number) =>
+    post<WithdrawResult>("/payments/withdraw", { amount }, token),
 };
 
 export { ApiError };
