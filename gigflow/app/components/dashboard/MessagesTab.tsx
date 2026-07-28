@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "../../providers/AuthContext";
 import { useSocket } from "../../providers/SocketContext";
+import { resolveAssetUrl } from "../../lib/api/authApi";
 import type { Contract } from "../../lib/api/contractApi";
 import { type Message, messageApi } from "../../lib/api/messageApi";
 
@@ -40,7 +41,7 @@ export default function MessagesTab({
 
   const myId = user?.id || (user as any)?._id;
 
-  // Derive "other party" name from contract
+  // Derive "other party" name and details from contract
   const getOtherPartyName = (contract: Contract) =>
     role === "client" ? contract.freelancerName : contract.clientName;
 
@@ -48,6 +49,9 @@ export default function MessagesTab({
     role === "client"
       ? contract.freelancerInitials || contract.freelancerName?.slice(0, 2).toUpperCase() || "??"
       : contract.clientInitials || contract.clientName?.slice(0, 2).toUpperCase() || "??";
+
+  const getOtherPartyPhoto = (contract: Contract) =>
+    role === "client" ? contract.freelancerProfilePicture : contract.clientProfilePicture;
 
   // ─── Auto-scroll on new messages ─────────────────────────────────────────
   useEffect(() => {
@@ -248,12 +252,20 @@ export default function MessagesTab({
               >
                 <div className="flex items-start gap-3">
                   {/* Avatar */}
-                  <div
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[11px] font-black text-white"
-                    style={{ background: isSelected ? "#38bdf8" : "#64748b" }}
-                  >
-                    {getOtherPartyInitials(contract)}
-                  </div>
+                  {getOtherPartyPhoto(contract) ? (
+                    <img
+                      src={resolveAssetUrl(getOtherPartyPhoto(contract)!)}
+                      alt={getOtherPartyName(contract)}
+                      className="h-9 w-9 shrink-0 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[11px] font-black text-white"
+                      style={{ background: isSelected ? "#38bdf8" : "#64748b" }}
+                    >
+                      {getOtherPartyInitials(contract)}
+                    </div>
+                  )}
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
@@ -298,9 +310,17 @@ export default function MessagesTab({
           <>
             {/* Chat header */}
             <div className="flex items-center gap-3 border-b border-[#e9eef5] px-5 py-3.5">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#38bdf8] text-[11px] font-black text-white">
-                {getOtherPartyInitials(selectedContract)}
-              </div>
+              {getOtherPartyPhoto(selectedContract) ? (
+                <img
+                  src={resolveAssetUrl(getOtherPartyPhoto(selectedContract)!)}
+                  alt={getOtherPartyName(selectedContract)}
+                  className="h-9 w-9 shrink-0 rounded-lg object-cover"
+                />
+              ) : (
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#38bdf8] text-[11px] font-black text-white">
+                  {getOtherPartyInitials(selectedContract)}
+                </div>
+              )}
               <div className="min-w-0 flex-1">
                 <p className="text-[14px] font-extrabold text-[#111d31]">
                   {getOtherPartyName(selectedContract)}
