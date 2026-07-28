@@ -31,6 +31,9 @@ export const initSocketIO = (httpServer: HttpServer) => {
   io.on("connection", (socket: Socket) => {
     const userId = socket.data.userId as string;
 
+    // Join personal user room for direct notification target
+    socket.join(`user:${userId}`);
+
     socket.on(
       "join_contract",
       async (

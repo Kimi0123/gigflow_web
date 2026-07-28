@@ -4,6 +4,7 @@ import { ErrorCodes } from "../errors/error-codes";
 import { HttpError } from "../errors/http-error";
 import { ContractModel } from "../models/contract.model";
 import { IReviewDocument, ReviewModel, ReviewerRole } from "../models/review.model";
+import { createNotification } from "./notification.service";
 
 const serializeReview = (review: IReviewDocument) => {
   const reviewerDoc = review.populated("reviewer")
@@ -92,6 +93,13 @@ export const createReview = async (
   const populated = await ReviewModel.findById(review._id).populate(
     "reviewer",
     "firstName lastName profilePicture"
+  );
+
+  await createNotification(
+    reviewee.toString(),
+    "review_received",
+    "You received a new review",
+    review._id.toString()
   );
 
   return serializeReview(populated!);
