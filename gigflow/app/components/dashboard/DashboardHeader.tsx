@@ -7,7 +7,11 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../providers/AuthContext";
 import { useSocket } from "../../providers/SocketContext";
 import { messageApi } from "../../lib/api/messageApi";
-
+import {
+  notificationApi,
+  NotificationModel,
+  NotificationType,
+} from "../../lib/api/notificationApi";
 import { resolveAssetUrl } from "../../lib/api/authApi";
 
 interface DashboardHeaderProps {
@@ -16,6 +20,21 @@ interface DashboardHeaderProps {
   onNavClick?: (label: string) => void;
   activeNav?: string;
   onPostJob?: () => void;
+}
+
+function formatNotificationTime(isoString: string): string {
+  try {
+    const diffMs = Date.now() - new Date(isoString).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  } catch {
+    return "";
+  }
 }
 
 export default function DashboardHeader({
@@ -28,40 +47,112 @@ export default function DashboardHeader({
   const router = useRouter();
   const { user, token, logout } = useAuth();
   const { socket } = useSocket();
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState<number>(0);
+
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [unreadMessageCount, setUnreadMessageCount] = useState<number>(0);
+
+  // Notification states
+  const [notificationUnreadCount, setNotificationUnreadCount] = useState<number>(0);
+  const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationModel[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
 
   const fullName = user
     ? user.fullName || `${user.firstName} ${user.lastName}`.trim()
     : "";
   const initials = user?.firstName?.slice(0, 2).toUpperCase() || "??";
 
-  const fetchUnreadCount = useCallback(async () => {
+  const fetchUnreadMessageCount = useCallback(async () => {
     if (!token) return;
     try {
       const data = await messageApi.getUnreadCount(token);
-      setUnreadCount(data.unreadCount);
+      setUnreadMessageCount(data.unreadCount);
+    } catch {
+      // non-critical
+    }
+  }, [token]);
+
+  const fetchNotificationUnreadCount = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await notificationApi.getUnreadCount(token);
+      setNotificationUnreadCount(data.unreadCount);
     } catch {
       // non-critical
     }
   }, [token]);
 
   useEffect(() => {
-    void fetchUnreadCount();
-  }, [fetchUnreadCount, activeNav]);
+    void fetchUnreadMessageCount();
+    void fetchNotificationUnreadCount();
+  }, [fetchUnreadMessageCount, fetchNotificationUnreadCount, activeNav]);
 
   useEffect(() => {
     if (!socket) return;
 
     const handleNewMessage = () => {
-      void fetchUnreadCount();
+      void fetchUnreadMessageCount();
+    };
+
+    const handleNewNotification = (newNotif: NotificationModel) => {
+      setNotificationUnreadCount((prev) => prev + 1);
+      setNotifications((prev) => [newNotif, ...prev]);
     };
 
     socket.on("new_message", handleNewMessage);
+    socket.on("notification", handleNewNotification);
+
     return () => {
       socket.off("new_message", handleNewMessage);
+      socket.off("notification", handleNewNotification);
     };
-  }, [socket, fetchUnreadCount]);
+  }, [socket, fetchUnreadMessageCount]);
+
+  const toggleNotificationDropdown = async () => {
+    const nextState = !notificationDropdownOpen;
+    setNotificationDropdownOpen(nextState);
+    if (nextState && token) {
+      setLoadingNotifications(true);
+      try {
+        const data = await notificationApi.getNotifications(token);
+        setNotifications(data);
+      } catch {
+        // non-critical
+      } finally {
+        setLoadingNotifications(false);
+      }
+    }
+  };
+
+  const handleNotificationClick = async (notif: NotificationModel) => {
+    if (!token) return;
+    if (!notif.read) {
+      try {
+        await notificationApi.markAsRead(token, notif.id);
+        setNotifications((prev) =>
+          prev.map((item) =>
+            item.id === notif.id ? { ...item, read: true } : item
+          )
+        );
+        setNotificationUnreadCount((prev) => Math.max(0, prev - 1));
+      } catch {
+        // non-critical
+      }
+    }
+  };
+
+  const handleMarkAllNotificationsRead = async () => {
+    if (!token) return;
+    try {
+      await notificationApi.markAllAsRead(token);
+      setNotifications((prev) =>
+        prev.map((item) => ({ ...item, read: true }))
+      );
+      setNotificationUnreadCount(0);
+    } catch {
+      // non-critical
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -141,22 +232,105 @@ export default function DashboardHeader({
             title="Messages"
           >
             <ChatBubbleIcon className="h-5 w-5" />
-            {unreadCount > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#38bdf8] px-1 text-[9px] font-bold text-white shadow-sm">
-                {unreadCount > 99 ? "99+" : unreadCount}
+            {unreadMessageCount > 0 && (
+              <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#38bdf8] px-1 text-[9px] font-bold text-white shadow-xs">
+                {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
               </span>
             )}
           </button>
 
-          {/* Notifications */}
-          <button
-            type="button"
-            aria-label="Notifications"
-            className="relative text-[#63748e] transition hover:text-[#38bdf8]"
-          >
-            <BellIcon className="h-5 w-5" />
-            <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[#38bdf8]" />
-          </button>
+          {/* Notifications button & dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              aria-label="Notifications"
+              onClick={toggleNotificationDropdown}
+              className="relative text-[#63748e] transition hover:text-[#38bdf8]"
+              title="Notifications"
+            >
+              <BellIcon className="h-5 w-5" />
+              {notificationUnreadCount > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#38bdf8] px-1 text-[9px] font-bold text-white shadow-xs">
+                  {notificationUnreadCount > 99 ? "99+" : notificationUnreadCount}
+                </span>
+              )}
+            </button>
+
+            {notificationDropdownOpen && (
+              <>
+                {/* Backdrop */}
+                <div
+                  className="fixed inset-0 z-20"
+                  onClick={() => setNotificationDropdownOpen(false)}
+                />
+                <div className="absolute right-0 top-full z-30 mt-2 w-[320px] sm:w-[360px]">
+                  <div className="overflow-hidden rounded-xl border border-[#dce5ef] bg-white shadow-[0_20px_60px_rgba(17,29,49,0.12)]">
+                    {/* Header */}
+                    <div className="flex items-center justify-between border-b border-[#edf2f6] px-4 py-3">
+                      <h4 className="text-[13px] font-extrabold text-[#111d31]">
+                        Notifications
+                      </h4>
+                      {notificationUnreadCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleMarkAllNotificationsRead}
+                          className="text-[11px] font-bold text-[#38bdf8] transition hover:text-[#0ea5e9]"
+                        >
+                          Mark all as read
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Notification Items List */}
+                    <div className="max-h-[360px] overflow-y-auto divide-y divide-[#edf2f6]">
+                      {loadingNotifications ? (
+                        <div className="p-4 text-center text-[12px] font-medium text-[#72839a]">
+                          Loading notifications...
+                        </div>
+                      ) : notifications.length === 0 ? (
+                        <div className="p-6 text-center text-[12px] font-medium text-[#72839a]">
+                          No notifications yet
+                        </div>
+                      ) : (
+                        notifications.map((notif) => (
+                          <div
+                            key={notif.id}
+                            onClick={() => handleNotificationClick(notif)}
+                            className={`flex items-start gap-3 p-3.5 transition cursor-pointer ${
+                              notif.read
+                                ? "bg-white hover:bg-[#f8fafc]"
+                                : "bg-[#f0f9ff] hover:bg-[#e0f2fe]"
+                            }`}
+                          >
+                            <div className="mt-0.5 shrink-0">
+                              <NotificationTypeIcon type={notif.type} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p
+                                className={`text-[12px] leading-snug ${
+                                  notif.read
+                                    ? "font-medium text-[#475569]"
+                                    : "font-bold text-[#0f172a]"
+                                }`}
+                              >
+                                {notif.message}
+                              </p>
+                              <p className="mt-1 text-[10px] font-medium text-[#94a3b8]">
+                                {formatNotificationTime(notif.createdAt)}
+                              </p>
+                            </div>
+                            {!notif.read && (
+                              <span className="mt-1.5 h-2 w-2 rounded-full bg-[#38bdf8] shrink-0" />
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Role badge */}
           <span
@@ -178,7 +352,7 @@ export default function DashboardHeader({
           <div className="relative">
             <button
               type="button"
-              onClick={() => setDropdownOpen((v) => !v)}
+              onClick={() => setUserDropdownOpen((v) => !v)}
               className="flex items-center gap-2.5 rounded-xl border border-[#dce5ef] bg-[#f4fbff] px-2.5 py-1.5 transition hover:border-[#38bdf8] hover:bg-white"
             >
               {user?.profilePicture ? (
@@ -203,12 +377,12 @@ export default function DashboardHeader({
               <ChevronDownIcon className="hidden h-3.5 w-3.5 text-[#9caec1] lg:block" />
             </button>
 
-            {dropdownOpen && (
+            {userDropdownOpen && (
               <>
                 {/* Backdrop */}
                 <div
                   className="fixed inset-0 z-20"
-                  onClick={() => setDropdownOpen(false)}
+                  onClick={() => setUserDropdownOpen(false)}
                 />
                 <div className="absolute right-0 top-full z-30 mt-2 w-[220px]">
                   <div className="overflow-hidden rounded-xl border border-[#dce5ef] bg-white shadow-[0_20px_60px_rgba(17,29,49,0.12)]">
@@ -226,7 +400,7 @@ export default function DashboardHeader({
                     <div className="p-1">
                       <Link
                         href="/profile"
-                        onClick={() => setDropdownOpen(false)}
+                        onClick={() => setUserDropdownOpen(false)}
                         className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[12px] font-bold uppercase tracking-[0.12em] text-[#5d6f8d] transition hover:bg-[#eef8ff] hover:text-[#38bdf8]"
                       >
                         <UserIcon className="h-3.5 w-3.5" />
@@ -234,7 +408,7 @@ export default function DashboardHeader({
                       </Link>
                       <Link
                         href="/profile/password"
-                        onClick={() => setDropdownOpen(false)}
+                        onClick={() => setUserDropdownOpen(false)}
                         className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[12px] font-bold uppercase tracking-[0.12em] text-[#5d6f8d] transition hover:bg-[#eef8ff] hover:text-[#38bdf8]"
                       >
                         <SettingsIcon className="h-3.5 w-3.5" />
@@ -284,6 +458,66 @@ export default function DashboardHeader({
       )}
     </header>
   );
+}
+
+// ─── Notification Type Icon Helper ──────────────────────────────────────────
+function NotificationTypeIcon({ type }: { type: NotificationType }) {
+  switch (type) {
+    case "proposal_received":
+      return (
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-100 text-[#38bdf8]">
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+        </span>
+      );
+    case "proposal_accepted":
+      return (
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      );
+    case "proposal_rejected":
+      return (
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-100 text-rose-600">
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      );
+    case "new_message":
+      return (
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
+          <ChatBubbleIcon className="h-4 w-4" />
+        </span>
+      );
+    case "contract_completed":
+      return (
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        </span>
+      );
+    case "review_received":
+      return (
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+          <svg className="h-4 w-4 fill-amber-400" viewBox="0 0 16 16">
+            <path d="m8 1.5 1.8 3.7 4 .6-2.9 2.8.7 4L8 10.4 4.4 12.6l.7-4L2.2 5.8l4-.6L8 1.5Z" />
+          </svg>
+        </span>
+      );
+    default:
+      return (
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+          <BellIcon className="h-4 w-4" />
+        </span>
+      );
+  }
 }
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
