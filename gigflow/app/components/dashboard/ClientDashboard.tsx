@@ -828,9 +828,9 @@ function ClientJobCard({
             {job.description}
           </p>
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {job.skills.map((skill) => (
+            {job.skills.map((skill, index) => (
               <span
-                key={skill}
+                key={`${skill}-${index}`}
                 className="rounded-md border border-[#dce5ef] bg-[#f0f8ff] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-[#4b6a8a]"
               >
                 {skill}
@@ -1002,6 +1002,22 @@ function ProposalRow({
                 Job: {proposal.jobTitle}
               </p>
             )}
+            {fl?.cvUrl && (
+              <a
+                href={resolveAssetUrl(fl.cvUrl)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-flex items-center gap-1 rounded-md border border-[#38bdf8]/30 bg-[#f0f9ff] px-2 py-0.5 text-[11px] font-bold text-[#0284c7] transition hover:bg-[#e0f2fe] hover:text-[#0369a1]"
+              >
+                <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
+                View CV
+              </a>
+            )}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -1131,10 +1147,14 @@ function PostJobModal({
         budgetType: form.budgetType,
         budgetMin: Number(form.budgetMin),
         budgetMax: form.budgetMax ? Number(form.budgetMax) : undefined,
-        skills: form.skills
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
+        skills: Array.from(
+          new Set(
+            form.skills
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          )
+        ),
         duration: form.duration,
         status: asDraft ? "draft" : "open",
       });
@@ -1237,21 +1257,40 @@ function PostJobModal({
                     className={inputCls(false)}
                   />
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    {skillSuggestions.slice(0, 8).map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() =>
-                          update(
-                            "skills",
-                            form.skills ? `${form.skills}, ${s}` : s,
-                          )
-                        }
-                        className="rounded-md border border-[#dce5ef] bg-[#f7f8fa] px-2.5 py-1 text-[10px] font-semibold text-[#6b7280] transition hover:border-[#38bdf8] hover:text-[#38bdf8]"
-                      >
-                        + {s}
-                      </button>
-                    ))}
+                    {(() => {
+                      const currentSkillsList = form.skills
+                        .split(",")
+                        .map((s) => s.trim().toLowerCase())
+                        .filter(Boolean);
+                      const availableSuggestions = skillSuggestions.filter(
+                        (s) => !currentSkillsList.includes(s.toLowerCase())
+                      );
+                      return availableSuggestions.slice(0, 8).map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => {
+                            const currentList = form.skills
+                              .split(",")
+                              .map((item) => item.trim())
+                              .filter(Boolean);
+                            if (
+                              !currentList.some(
+                                (item) => item.toLowerCase() === s.toLowerCase()
+                              )
+                            ) {
+                              update(
+                                "skills",
+                                form.skills ? `${form.skills}, ${s}` : s
+                              );
+                            }
+                          }}
+                          className="rounded-md border border-[#dce5ef] bg-[#f7f8fa] px-2.5 py-1 text-[10px] font-semibold text-[#6b7280] transition hover:border-[#38bdf8] hover:text-[#38bdf8]"
+                        >
+                          + {s}
+                        </button>
+                      ));
+                    })()}
                   </div>
                 </Field>
               </div>
