@@ -6,7 +6,7 @@ const freelancers = [
   {
     name: "Sophia Kaur",
     role: "Full-Stack Developer",
-    rate: "$85/hr",
+    rate: "Rs. 8,500/hr",
     rating: 4.9,
     reviews: 24,
     skills: ["React", "Node.js", "PostgreSQL"],
@@ -17,7 +17,7 @@ const freelancers = [
   {
     name: "Marcus Chen",
     role: "UI/UX Designer",
-    rate: "$70/hr",
+    rate: "Rs. 7,000/hr",
     rating: 5.0,
     reviews: 18,
     skills: ["Figma", "Framer", "Tailwind"],
@@ -28,7 +28,7 @@ const freelancers = [
   {
     name: "Aaliya Patel",
     role: "AI/ML Engineer",
-    rate: "$110/hr",
+    rate: "Rs. 11,000/hr",
     rating: 4.8,
     reviews: 12,
     skills: ["Python", "TensorFlow", "LangChain"],
@@ -39,7 +39,7 @@ const freelancers = [
   {
     name: "Liam Brooks",
     role: "Brand & Motion",
-    rate: "$65/hr",
+    rate: "Rs. 6,500/hr",
     rating: 4.9,
     reviews: 31,
     skills: ["After Effects", "Illustrator", "3D"],

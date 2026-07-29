@@ -704,7 +704,7 @@ export default function ClientDashboard() {
 }
 
 // ─── Job Card ─────────────────────────────────────────────────────────────────
-function ClientJobCard({
+export function ClientJobCard({
   job,
   token,
   onDelete,
