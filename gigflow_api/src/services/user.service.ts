@@ -148,7 +148,7 @@ export const updateUserProfile = async (
   const user = await UserModel.findByIdAndUpdate(
     userId,
     { $set: data },
-    { new: true, runValidators: true },
+    { returnDocument: "after", runValidators: true },
   );
 
   if (!user) {

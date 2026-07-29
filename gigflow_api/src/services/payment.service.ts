@@ -59,7 +59,7 @@ export const fundContract = async (clientId: string, contractId: string) => {
   const updatedWallet = await WalletModel.findOneAndUpdate(
     { user: clientId, balance: { $gte: contract.agreedAmount } },
     { $inc: { balance: -contract.agreedAmount } },
-    { new: true }
+    { returnDocument: "after" }
   );
 
   if (!updatedWallet) {
@@ -119,7 +119,7 @@ export const releasePayment = async (contractId: string) => {
   await WalletModel.findOneAndUpdate(
     { user: new mongoose.Types.ObjectId(freelancerId) },
     { $inc: { balance: contract.agreedAmount } },
-    { new: true, upsert: true }
+    { returnDocument: "after", upsert: true }
   );
 
   // Record "release" transaction (from escrow — no "from")
@@ -254,7 +254,7 @@ export const verifyTopup = async (base64Data: string) => {
   const updatedWallet = await WalletModel.findOneAndUpdate(
     { user: transaction.to },
     { $inc: { balance: transaction.amount } },
-    { new: true, upsert: true }
+    { returnDocument: "after", upsert: true }
   );
 
   transaction.status = "completed";
@@ -276,7 +276,7 @@ export const withdrawFunds = async (userId: string, amount: number) => {
   const updatedWallet = await WalletModel.findOneAndUpdate(
     { user: new mongoose.Types.ObjectId(userId), balance: { $gte: amount } },
     { $inc: { balance: -amount } },
-    { new: true }
+    { returnDocument: "after" }
   );
 
   if (!updatedWallet) {
@@ -316,7 +316,7 @@ export const mockTopup = async (userId: string, amount: number) => {
   const updatedWallet = await WalletModel.findOneAndUpdate(
     { user: new mongoose.Types.ObjectId(userId) },
     { $inc: { balance: amount } },
-    { new: true, upsert: true }
+    { returnDocument: "after", upsert: true }
   );
 
   const transaction = await TransactionModel.create({
