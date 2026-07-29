@@ -174,7 +174,7 @@ export const updateAdminUser = async (
   const user = await UserModel.findByIdAndUpdate(
     userId,
     { $set: updateData },
-    { new: true, runValidators: true },
+    { returnDocument: "after", runValidators: true },
   );
 
   if (!user) {

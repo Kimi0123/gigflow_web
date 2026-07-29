@@ -6,7 +6,7 @@ const services = [
   {
     title: "Website & Landing Page Design",
     category: "Graphics & Design",
-    price: "Starting at $50",
+    price: "Starting at Rs. 5,000",
     tags: ["Figma", "UI/UX"],
     badge: "Popular",
     badgeColor: "bg-sky-50 text-[#38bdf8] border-sky-200",
@@ -14,7 +14,7 @@ const services = [
   {
     title: "React & Next.js Web Application",
     category: "Programming & Tech",
-    price: "Starting at $150",
+    price: "Starting at Rs. 15,000",
     tags: ["React", "Next.js", "TypeScript"],
     badge: "Top Demand",
     badgeColor: "bg-emerald-50 text-emerald-600 border-emerald-200",
@@ -22,7 +22,7 @@ const services = [
   {
     title: "SEO Copywriting & Technical Articles",
     category: "Writing & Translation",
-    price: "Starting at $25",
+    price: "Starting at Rs. 2,500",
     tags: ["SEO", "Blog", "Docs"],
     badge: "Fast Turnaround",
     badgeColor: "bg-amber-50 text-amber-600 border-amber-200",
@@ -30,7 +30,7 @@ const services = [
   {
     title: "Social Media Strategy & Content",
     category: "Digital Marketing",
-    price: "Starting at $40",
+    price: "Starting at Rs. 4,000",
     tags: ["Instagram", "Content", "Strategy"],
     badge: "Popular",
     badgeColor: "bg-sky-50 text-[#38bdf8] border-sky-200",
@@ -38,7 +38,7 @@ const services = [
   {
     title: "AI API & LLM Chatbot Integration",
     category: "AI Services",
-    price: "Starting at $200",
+    price: "Starting at Rs. 20,000",
     tags: ["Gemini", "GPT-4", "Node.js"],
     badge: "Trending",
     badgeColor: "bg-purple-50 text-purple-600 border-purple-200",
@@ -46,7 +46,7 @@ const services = [
   {
     title: "Logo Design & Brand Guidelines",
     category: "Graphics & Design",
-    price: "Starting at $30",
+    price: "Starting at Rs. 3,000",
     tags: ["Branding", "Vector", "SVG"],
     badge: "Top Rated",
     badgeColor: "bg-emerald-50 text-emerald-600 border-emerald-200",
