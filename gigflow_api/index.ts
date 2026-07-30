@@ -1,10 +1,8 @@
+import "dotenv/config";
 import http from "http";
-import dotenv from "dotenv";
 import app from "./src/app";
 import { connectDB } from "./src/database/mongodb";
 import { initSocketIO } from "./src/socket";
-
-dotenv.config();
 
 const port = Number(process.env.PORT) || 5000;
 

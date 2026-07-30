@@ -14,4 +14,5 @@ export interface IUser {
   cvUrl?: string;
   resetPasswordTokenHash?: string;
   resetPasswordExpires?: Date;
+  fcmTokens?: string[];
 }

@@ -4,6 +4,7 @@ import {
   getCurrentUser,
   loginUser,
   refreshAccessToken,
+  registerFcmToken,
   registerUser,
   requestPasswordReset,
   resetPassword,
@@ -201,4 +202,19 @@ export const resetPasswordHandler = async (
     next(error);
   }
 };
+
+export const registerFcmTokenHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { token } = req.body || {};
+    const result = await registerFcmToken(req.userId!, token);
+    sendSuccess(res, 200, "FCM token registered successfully", result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 

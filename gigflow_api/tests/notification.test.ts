@@ -409,4 +409,83 @@ describe("Notification Integration Tests", () => {
       expect(unauthorizedMarkRes.status).toBe(403);
     });
   });
+
+  describe("FCM Push Notifications", () => {
+    it("should register an FCM token for the authenticated user via PATCH /api/v1/auth/fcm-token", async () => {
+      const fakeToken = "fcm_token_test_123456789";
+
+      const res = await request(app)
+        .patch("/api/v1/auth/fcm-token")
+        .set("Authorization", `Bearer ${clientToken}`)
+        .send({ token: fakeToken });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.fcmTokens).toContain(fakeToken);
+
+      // Registering duplicate token should not create duplicates ($addToSet)
+      const resDuplicate = await request(app)
+        .patch("/api/v1/auth/fcm-token")
+        .set("Authorization", `Bearer ${clientToken}`)
+        .send({ token: fakeToken });
+
+      expect(resDuplicate.status).toBe(200);
+      expect(
+        resDuplicate.body.data.fcmTokens.filter((t: string) => t === fakeToken)
+      ).toHaveLength(1);
+    });
+
+    it("should create notification without throwing when recipient has an FCM token", async () => {
+      const fakeToken = "fcm_token_fake_device_token";
+
+      // Register token for freelancer
+      await request(app)
+        .patch("/api/v1/auth/fcm-token")
+        .set("Authorization", `Bearer ${freelancerToken}`)
+        .send({ token: fakeToken });
+
+      // Post job & proposal to trigger notification
+      const jobRes = await request(app)
+        .post("/api/v1/jobs")
+        .set("Authorization", `Bearer ${clientToken}`)
+        .send(validJobPayload);
+
+      const propRes = await request(app)
+        .post(`/api/v1/jobs/${jobRes.body.data.id}/proposals`)
+        .set("Authorization", `Bearer ${freelancerToken}`)
+        .send(validProposalPayload);
+
+      // Client accepts proposal -> triggers createNotification to freelancer
+      const acceptRes = await request(app)
+        .patch(`/api/v1/jobs/proposals/${propRes.body.data.id}/status`)
+        .set("Authorization", `Bearer ${clientToken}`)
+        .send({ status: "accepted" });
+
+      expect(acceptRes.status).toBe(200);
+    });
+
+    it("should create notification successfully when user has no FCM tokens (push silently skipped)", async () => {
+      // Freelancer has no fcmToken registered
+      const jobRes = await request(app)
+        .post("/api/v1/jobs")
+        .set("Authorization", `Bearer ${clientToken}`)
+        .send(validJobPayload);
+
+      const propRes = await request(app)
+        .post(`/api/v1/jobs/${jobRes.body.data.id}/proposals`)
+        .set("Authorization", `Bearer ${freelancerToken}`)
+        .send(validProposalPayload);
+
+      expect(propRes.status).toBe(201);
+
+      // Check freelancer notifications created
+      const notifRes = await request(app)
+        .get("/api/v1/notifications")
+        .set("Authorization", `Bearer ${clientToken}`);
+
+      expect(notifRes.status).toBe(200);
+      expect(notifRes.body.data.length).toBeGreaterThanOrEqual(1);
+    });
+  });
 });
+

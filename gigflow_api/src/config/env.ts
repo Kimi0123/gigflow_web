@@ -75,3 +75,13 @@ export const getEsewaConfig = (): EsewaConfig => {
 
   return { productCode, secretKey, gatewayUrl, statusUrl };
 };
+
+export interface FirebaseConfig {
+  serviceAccountPath: string;
+}
+
+export const getFirebaseConfig = (): FirebaseConfig => {
+  const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || "";
+  return { serviceAccountPath };
+};
+
