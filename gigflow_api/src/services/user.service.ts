@@ -295,3 +295,27 @@ export const resetPassword = async (input: unknown): Promise<void> => {
   user.resetPasswordExpires = undefined;
   await user.save();
 };
+
+export const registerFcmToken = async (userId: string, token: string) => {
+  if (!token || typeof token !== "string" || !token.trim()) {
+    throw new HttpError(400, "Token is required", {
+      code: ErrorCodes.VALIDATION_ERROR,
+      errors: [{ field: "token", message: "Token is required" }],
+    });
+  }
+
+  const updatedUser = await UserModel.findByIdAndUpdate(
+    userId,
+    { $addToSet: { fcmTokens: token.trim() } },
+    { returnDocument: "after" }
+  );
+
+  if (!updatedUser) {
+    throw new HttpError(404, "User not found", {
+      code: ErrorCodes.NOT_FOUND,
+    });
+  }
+
+  return { fcmTokens: updatedUser.fcmTokens || [] };
+};
+

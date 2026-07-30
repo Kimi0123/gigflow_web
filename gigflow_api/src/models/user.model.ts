@@ -3,6 +3,7 @@ import { IUser, UserRole } from "../types/user.type";
 
 export interface IUserDocument extends IUser, Document {
   role: UserRole;
+  fcmTokens: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -73,6 +74,10 @@ const userSchema = new Schema<IUserDocument>(
     resetPasswordExpires: {
       type: Date,
       select: false,
+    },
+    fcmTokens: {
+      type: [String],
+      default: [],
     },
   },
   {

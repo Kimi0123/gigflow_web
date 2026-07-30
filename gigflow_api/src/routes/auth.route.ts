@@ -7,6 +7,7 @@ import {
   me,
   refreshToken,
   register,
+  registerFcmTokenHandler,
   resetPasswordHandler,
   updatePassword,
   updateProfile,
@@ -29,6 +30,7 @@ router.patch("/me", authorized, uploadProfileAndCv, updateProfile);
 router.get("/whoami", authorized, me);
 router.patch("/update", authorized, uploadProfileAndCv, updateProfile);
 router.patch("/update/password", authorized, updatePassword);
+router.patch("/fcm-token", authorized, registerFcmTokenHandler);
 
 // Admin/user management (protected)
 router.get("/user/:id", authorized, getUserById);

@@ -7,6 +7,26 @@ import {
   NotificationType,
 } from "../models/notification.model";
 import { getIO } from "../socket";
+import { sendPushNotification } from "./push.service";
+
+const getPushTitle = (type: NotificationType): string => {
+  switch (type) {
+    case "proposal_received":
+      return "New Proposal";
+    case "proposal_accepted":
+      return "Proposal Accepted";
+    case "proposal_rejected":
+      return "Proposal Rejected";
+    case "new_message":
+      return "New Message";
+    case "contract_completed":
+      return "Contract Completed";
+    case "review_received":
+      return "New Review";
+    default:
+      return "GigFlow Notification";
+  }
+};
 
 export const serializeNotification = (doc: INotificationDocument) => ({
   _id: doc._id.toString(),
@@ -49,6 +69,17 @@ export const createNotification = async (
     }
   } catch (err) {
     // Socket.IO may not be initialized (e.g. during standalone unit tests)
+  }
+
+  // Safely trigger push notification via FCM
+  try {
+    const title = getPushTitle(type);
+    sendPushNotification(recipientStr, title, message, {
+      type,
+      relatedId: relatedId ? String(relatedId) : "",
+    }).catch(() => {});
+  } catch (err) {
+    // Push notification failure should never break notification creation
   }
 
   return serialized;
